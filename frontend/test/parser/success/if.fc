@@ -1,0 +1,9 @@
+int foo(bool b) {
+    if (b)
+        return 1;
+    if (!b)
+        return 2;
+    else
+        return 3;
+    return 0;
+}

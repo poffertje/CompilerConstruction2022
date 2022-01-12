@@ -1,0 +1,10 @@
+extern void printf(char[], ...);
+
+int retFive() {
+    return 5;
+}
+
+int main() {
+    printf("%d\n", retFive);
+    return 0;
+}

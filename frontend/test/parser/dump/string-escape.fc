@@ -1,0 +1,17 @@
+extern void sink(...);
+
+int main() {
+    sink("\"\t'x'\t\"\n");
+    sink('"');
+    sink('\'');
+    sink('\n');
+    sink('\t');
+    sink('\v');
+    sink('\b');
+    sink('\r');
+    sink('\f');
+    sink('\a');
+    sink('\0');
+    sink('\\');
+    return 0;
+}

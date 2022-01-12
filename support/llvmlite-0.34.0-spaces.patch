@@ -1,0 +1,43 @@
+diff --git a/ffi/build.py b/ffi/build.py
+index 09e95da..54a6064 100755
+--- a/ffi/build.py
++++ b/ffi/build.py
+@@ -12,6 +12,7 @@ import subprocess
+ import shutil
+ import sys
+ import tempfile
++import shlex
+ 
+ 
+ here_dir = os.path.abspath(os.path.dirname(__file__))
+@@ -30,7 +31,7 @@ def try_cmake(cmake_dir, build_dir, generator):
+         os.chdir(old_dir)
+ 
+ 
+-def run_llvm_config(llvm_config, args):
++def run_llvm_config_raw(llvm_config, args):
+     cmd = [llvm_config] + args
+     p = subprocess.Popen(cmd,
+                          stdout=subprocess.PIPE,
+@@ -45,6 +46,12 @@ def run_llvm_config(llvm_config, args):
+     return out
+ 
+ 
++def run_llvm_config(llvm_config, args):
++    prefix = run_llvm_config_raw(llvm_config, ['--prefix']).rstrip()
++    out = run_llvm_config_raw(llvm_config, args)
++    return out.replace(prefix, shlex.quote(prefix))
++
++
+ def find_win32_generator():
+     """
+     Find a suitable cmake "generator" under Windows.
+@@ -150,7 +157,7 @@ def main_posix(kind, library_ext):
+     cxxflags = run_llvm_config(llvm_config, ["--cxxflags"])
+     # on OSX cxxflags has null bytes at the end of the string, remove them
+     cxxflags = cxxflags.replace('\0', '')
+-    cxxflags = cxxflags.split() + ['-fno-rtti', '-g']
++    cxxflags = [shlex.quote(arg) for arg in shlex.split(cxxflags)] + ['-fno-rtti', '-g']
+ 
+     # look for SVML
+     include_dir = run_llvm_config(llvm_config, ['--includedir']).strip()

@@ -1,0 +1,6 @@
+/*
+ * heh
+ */
+int x = /*test*/ 1; // 12
+
+// another line

@@ -1,0 +1,55 @@
+#include <cstdlib.fh>
+
+void printArray(int N, int[] a) {
+    for (int i = 0 to N) {
+        for (int j = 0 to N) {
+            if (j == a[i])
+                printf("Q");
+            else
+                printf(".");
+            printf(" ");
+        }
+        printf("\n");
+    }
+    for (int i = 0 to 2*N)
+        printf("-");
+    printf("\n");
+}
+
+void getPositions(int N, int[] a1, int colno, int val) {
+    a1[colno] = val;
+
+    if (colno == N - 1) {
+        printArray(N, a1);
+        return;
+    }
+
+    for (int ctr1 = 0 to N) {
+        int keepgoing = 0;
+        for (int ctr2 = 0 to colno+1) {
+            if (a1[ctr2] == ctr1 ||
+                    (colno+1-ctr2)*(colno+1-ctr2) ==
+                    (ctr1-a1[ctr2])*(ctr1-a1[ctr2])) {
+                keepgoing = 1;
+            }
+        }
+        if (keepgoing == 0)
+            getPositions(N, a1, colno+1, ctr1);
+    }
+}
+
+int main(int argc, char[][] argv) {
+    if (argc != 2) {
+        printf("Usage: %s <N>\n", argv[0]);
+        return 1;
+    }
+
+    int N = atoi(argv[1]);
+
+    int[N] a;
+
+    for (int i = 0 to N)
+        getPositions(N, a, 0, i);
+
+    return 0;
+}

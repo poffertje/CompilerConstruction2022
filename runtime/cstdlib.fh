@@ -1,0 +1,10 @@
+/*
+ * Prototypes for functions in the C standard library.
+ */
+
+extern /*long*/ int random();
+extern void srandom(/*unsigned*/ int seed);
+extern int printf(char[] s, ...);
+extern int puts(char[] s);
+extern int atoi(char[] nptr);
+extern void exit(int status);

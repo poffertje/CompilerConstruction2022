@@ -1,0 +1,5 @@
+extern void sink(...);
+
+int foo() {
+    sink(-true);
+}

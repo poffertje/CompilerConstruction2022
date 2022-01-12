@@ -1,0 +1,13 @@
+extern int printf(char[] format, ...);
+
+int foo() {
+    {
+        return 1;
+    }
+    return 2;
+}
+
+int main() {
+    printf("%d\n", foo());
+    return 0;
+}

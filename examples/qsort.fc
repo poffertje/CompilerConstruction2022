@@ -1,0 +1,52 @@
+#include <cstdlib.fh>
+#include <stdlib.fh>
+
+
+void print_array(int[] a, int size) {
+	for (int i = 0 to size)
+		printf("%d ", a[i]);
+	printf("\n");
+}
+
+void myqsort(int[] a, int left, int right) {
+	if (left >= right)
+		return;
+	int pivot = (right + left) / 2;
+
+	int temp = a[right]; a[right] = a[pivot]; a[pivot] = temp;
+
+    int store = left;
+	for (int i = left to right)
+		if (a[i] < a[right]) {
+			temp = a[i]; a[i] = a[store]; a[store] = temp;
+			store += 1;
+		}
+
+	temp = a[store]; a[store] = a[right]; a[right] = temp;
+	pivot = store;
+
+	myqsort(a, left, pivot-1);
+	myqsort(a, pivot+1, right);
+
+	return;
+}
+
+int main(int argc, char[][] argv) {
+	if (argc != 2) {
+		printf("Usage %s <array size>\n", argv[0]);
+		exit(1);
+	}
+
+	int size = atoi(argv[1]);
+	int[size] a;
+
+	srandom(1);
+	for (int i = 0 to size)
+		a[i] = random();
+
+	myqsort(a, 0, size - 1);
+	print_array(a, size);
+
+	return 0;
+}
+

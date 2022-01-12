@@ -1,0 +1,7 @@
+void foo(int i, int j, int k) {
+    ((i + j) - k);
+    (i + (j * k));
+    ((i + j) * k);
+    ((i + j) == (j + k));
+    ((i == j) || ((j == k) && (i == 0)));
+}

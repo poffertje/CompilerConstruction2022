@@ -1,0 +1,6 @@
+void foo() {
+    int i = 0;
+    i = -i;
+    bool b = false;
+    b = !b;
+}

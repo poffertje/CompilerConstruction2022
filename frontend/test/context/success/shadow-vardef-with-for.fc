@@ -1,0 +1,10 @@
+bool foo(int i) {
+    bool b = true;
+
+    for (int b = 0 to 10) {
+        // b is an integer within the loop
+        i = b;
+    }
+
+    return b;  // use as bool again
+}

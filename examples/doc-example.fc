@@ -1,0 +1,22 @@
+extern int printf(char[] format, ...);
+
+static int counter = 0;
+
+int get_counter() {
+    counter += 1;
+    return counter;
+}
+
+static void foo(int len) {
+    int[len] arr;
+    for (int i = 0 to len)
+        arr[i] = i;
+}
+
+int main(int argc, char[][] argv) {
+    for (int i = 0 to argc) {
+        printf("argv[%d]: %s\n", i, argv[i]);
+    }
+    foo(10);
+    return 0;
+}

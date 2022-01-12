@@ -1,0 +1,15 @@
+
+extern int printf(char[] format, ...);
+
+void print_nth(int[] a, int idx) {
+    printf("Item %d: %d\n", idx, a[idx]);
+}
+
+int main() {
+    int[16] a;
+    for (int i = 0 to 16)
+        a[i] = i * 2 + 1;
+    print_nth(a, 3);
+    print_nth(a, 7);
+    return 0;
+}

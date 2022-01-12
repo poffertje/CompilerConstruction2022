@@ -1,0 +1,10 @@
+bool foo(int i) {
+    bool b = true;
+
+    {
+        // b is an integer within the block
+        int b = i;
+    }
+
+    return b;  // use as bool again
+}

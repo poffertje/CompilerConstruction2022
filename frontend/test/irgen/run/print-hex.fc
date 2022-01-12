@@ -1,0 +1,6 @@
+extern int printf(char[] format, ...);
+
+int main() {
+    printf("%d\n", 0x123);
+    return 0;
+}

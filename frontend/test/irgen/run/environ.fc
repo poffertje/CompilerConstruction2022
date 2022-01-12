@@ -1,0 +1,16 @@
+extern int puts(char[] s);
+extern int strcmp(char[] s1, char[] s2);
+
+extern char[][] environ;
+
+static void check_env(char[][] envp, int i) {
+    if (strcmp(environ[0], envp[0]) == 0)
+        puts("ok");
+    else
+        puts("fail");
+}
+
+int main(int argc, char[][] argv, char[][] envp) {
+    check_env(envp, 0);
+    return 0;
+}

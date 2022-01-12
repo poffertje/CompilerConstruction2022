@@ -1,0 +1,5 @@
+extern int ext(int c, bool b, ...);
+
+void foo() {
+    ext(1);
+}

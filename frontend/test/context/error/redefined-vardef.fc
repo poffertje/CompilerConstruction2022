@@ -1,0 +1,4 @@
+void foo() {
+    int a = 1;
+    bool a = true;
+}

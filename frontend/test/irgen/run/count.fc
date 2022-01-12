@@ -1,0 +1,11 @@
+extern int printf(char[] format, ...);
+extern int atoi(char[] nptr);
+
+int main(int argc, char[][] argv) {
+    int num = atoi("8");
+    printf("num: %d\n", num);
+    for (int i = 0 to num) {
+        printf("%d\n", num - i);
+    }
+    return 0;
+}

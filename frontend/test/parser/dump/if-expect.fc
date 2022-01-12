@@ -1,0 +1,32 @@
+void foo() {
+    if (true) {
+        return;
+    }
+    if (true) {
+        return;
+    } else {
+        return;
+    }
+}
+
+int bar() {
+    if (true) {
+        if (false) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+    return 2;
+}
+
+int baz() {
+    if (true) {
+        if (false) {
+            return 0;
+        }
+    } else {
+        return 1;
+    }
+    return 2;
+}

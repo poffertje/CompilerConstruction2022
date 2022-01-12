@@ -1,0 +1,19 @@
+extern int puts(char[] s);
+
+void print_bool(bool b) {
+    if (b)
+        puts("true");
+    else
+        puts("false");
+}
+
+int main() {
+    float NaN = 0.0 / 0.0;
+    print_bool(NaN == NaN); // false
+    print_bool(NaN != NaN); // true
+    print_bool(NaN <= NaN); // false
+    print_bool(NaN >= NaN); // false
+    print_bool(NaN < NaN);  // false
+    print_bool(NaN > NaN);  // false
+    return 0;
+}

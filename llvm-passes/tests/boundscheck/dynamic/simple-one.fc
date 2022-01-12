@@ -1,0 +1,14 @@
+#include <cstdlib.fh>
+
+int main(int argc, char[][] argv) {
+    int[100] a;
+    for (int i = 0 to 100)
+        a[i] = i;
+
+    a[0] = -1;
+    puts("YES");
+    a[100] = 1337;
+    puts("NO");
+
+    return 0;
+}

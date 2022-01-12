@@ -1,0 +1,11 @@
+void foo() {
+    return;
+}
+
+int bar() {
+    return 1;
+}
+
+int baz() {
+    return bar();
+}

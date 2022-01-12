@@ -1,0 +1,6 @@
+void foo(int l) {
+    for (int i = 1 to 10) {
+        foo(i);
+    }
+    for (int j = 11 to l) foo(j);
+}

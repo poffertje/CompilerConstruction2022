@@ -1,0 +1,4 @@
+int main() {
+    float[true] float_array;
+    return 0;
+}

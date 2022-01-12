@@ -1,0 +1,5 @@
+void foo(int i, bool b) {}
+
+void bar() {
+    foo(1, 1.0);
+}

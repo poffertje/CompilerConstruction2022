@@ -1,0 +1,18 @@
+#include <cstdlib.fh>
+
+void foo(int[] a) {
+    for (int i = 0 to 100)
+        a[i] = i;
+
+    a[0] = -1;
+    puts("YES");
+    a[100] = 1337;
+    puts("NO");
+}
+
+int main(int argc, char[][] argv) {
+    int[100] a;
+    foo(a);
+
+    return 0;
+}

@@ -1,0 +1,8 @@
+extern int printf(char[] format, ...);
+
+int main() {
+    float f = 4.0;
+    printf("%.3f\n", -f);                   // -4.000
+    printf("%f\n", -1.0);                   // -1.000000
+    return 0;
+}

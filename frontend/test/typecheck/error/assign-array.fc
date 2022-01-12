@@ -1,0 +1,4 @@
+void foo(int[] p) {
+    int[10] arr = 1;
+    arr = p;
+}

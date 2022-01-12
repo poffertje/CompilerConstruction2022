@@ -1,0 +1,5 @@
+extern void sink(...);
+
+int foo(bool b) {
+    sink(b ? 1 : 2.0);
+}

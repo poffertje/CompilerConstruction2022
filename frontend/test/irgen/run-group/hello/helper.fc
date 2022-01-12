@@ -1,0 +1,5 @@
+extern int puts(char[] s);
+
+void helper() {
+    puts("Hello, World!");
+}

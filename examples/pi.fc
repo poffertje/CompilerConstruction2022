@@ -1,0 +1,22 @@
+#include <cstdlib.fh>
+#include <stdlib.fh>
+
+int main(int argc, char[][] argv) {
+    if (argc != 2) {
+        printf("Usage: %s <iterations>\n", argv[0]);
+        exit(1);
+    }
+
+    int hits = 0;
+    int iters = atoi(argv[1]);
+    srandom(1);
+    for (int i = 0 to iters) {
+        float d1 = int_to_float(random())/2147483647.0;
+        float d2 = int_to_float(random())/2147483647.0;
+        if (((d1*d1) + (d2*d2)) <= 1.0)
+            hits += 1;
+    }
+    printf("%.10f\n", 4.0 *  (int_to_float(hits) / int_to_float(iters)));
+    return 1;
+}
+

@@ -1,0 +1,4 @@
+extern int i;
+extern float f;
+extern bool b;
+extern int[] int_array;

@@ -1,0 +1,4 @@
+int foo(int p) {
+    int i = 1;
+    return p + i;
+}

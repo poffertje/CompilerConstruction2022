@@ -1,0 +1,10 @@
+/*
+ * The standard library of FenneC. Implementations are written in C and can be
+ * found in the runtime dir.
+ *
+ * The purpose of these functions is to implement operations that are not
+ * supported in the language itself, such as casting between types.
+ */
+
+
+extern float int_to_float(int i);
