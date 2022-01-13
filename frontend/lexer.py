@@ -32,7 +32,7 @@ tokens = (
     'NOT', 'INV',
     'TYPE',
     'MODIFY',
-    'BOOLCONST', 'CHARCONST', 'INTCONST', 'HEXCONST', 'FLOATCONST'
+    'BOOLCONST', 'CHARCONST', 'INTCONST', 'HEXCONST', 'FLOATCONST',
     'STRINGCONST',
     'DOTS',
     'ID',
