@@ -129,6 +129,11 @@ class TypeChecker(ASTVisitor):
         # condition must be bool
         self.visit_children(node)
         self.check_type(node.cond, self.tbool)
+    
+    def visitWhile(self, node):
+    	#condition must be bool
+    	self.visit_children(node)
+    	self.check_type(node.cond, self.tbool)
 
     def visitReturn(self, node):
         # returned type must match function type

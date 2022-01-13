@@ -329,6 +329,13 @@ class If(Statement):
             s += ' else ' + str(self.nobody)
         return s
 
+class While(Statement):
+    children = ['cond', 'loopbody']
+    types = dict(cond='Expression', loopbody='Block')
+
+    def __str__(self):
+        s = 'while ({0.cond}) {0.loopbody}'.format(self)
+        return s
 
 class Return(Statement):
     children = ['value']
