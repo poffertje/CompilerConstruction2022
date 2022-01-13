@@ -7,9 +7,8 @@ from util import LocationError, FatalError
 
 # operator precedence as per http://www.swansontec.com/sopc.html
 precedence = (
-    ('nonassoc', 'IF'),
+    ('nonassoc', 'IF', 'WHILE'),
     ('nonassoc', 'ELSE'),
-    ('nonassoc', 'WHILE'),
     ('left', 'OR'),
     ('left', 'AND'),
     ('left', 'EQ', 'NE'),
@@ -165,7 +164,7 @@ def p_if(p):
     p[0] = ast.If(p[3], block(p[5]), nobody).at(loc(p, 1, 4))
     
 def p_while(p):
-	'''statement : WHILE LPAREN expr RPAREN statment'''
+	'''statement : WHILE LPAREN expr RPAREN statement			  %prec WHILE'''
 	p[0] = ast.While(p[3], block(p[5])).at(loc(p, 1, 4))
 
 

@@ -155,6 +155,31 @@ class IRGen(ASTTransformer):
 
         # go to the end block to emit further instructions
         self.builder.position_at_start(bend)
+        
+    def visitWhile(self, node):
+    	import sys
+    	prefix = self.builder.block.name
+    	bwhilecond = self.add_block(prefix + ".whilecond")
+    	bwhilebody = self.add_block(prefix + ".whilebody")
+    	bend = self.add_block(prefix + ".endwhile")
+    	
+    	# terminate current block and go to our condition
+    	self.builder.branch(bwhilecond)
+    	
+    	# insert instructions to check the condition after the 'whilecond' block
+    	self.builder.position_at_start(bwhilecond)
+    	cond = self.visit_before(node.cond, bwhilebody)
+    	self.builder.cbranch(cond, bwhilebody, bend)
+    	
+    	# insert instructions of the loop body right after the condition
+    	self.builder.position_at_start(bwhilebody)
+    	self.visit_before(node.loopbody, bend)
+    	
+    	# insert branch back to the beginning of the loop
+    	#self.builder.position_at_start(bendwhile)
+    	self.builder.branch(bwhilecond)
+    	
+    	self.builder.position_at_start(bend)
 
     def visitReturn(self, node):
         self.visit_children(node)

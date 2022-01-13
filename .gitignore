@@ -13,4 +13,7 @@ lib/
 
 .idea/
 
-examples/
+*.log
+*.ll
+*.o
+!frontend/test/*
