@@ -32,7 +32,7 @@ tokens = (
     'NOT', 'INV',
     'TYPE',
     'MODIFY',
-    'BOOLCONST', 'CHARCONST', 'INTCONST', 'HEXCONST',
+    'BOOLCONST', 'CHARCONST', 'INTCONST', 'HEXCONST', 'FLOATCONST'
     'STRINGCONST',
     'DOTS',
     'ID',
@@ -96,11 +96,13 @@ def t_ID(t):
 
 
 def t_number(t):
-    r'0x[a-fA-F0-9]+|\d+'
+    r'0x[a-fA-F0-9]+|\d+\.\d+|\d+'
     if t.value.startswith('0x'):
         t.type = 'HEXCONST'     # e.g. 0xabc123
     elif t.value.isdigit():
         t.type = 'INTCONST'     # e.g. 123
+    elif t.value.count('.') == 1:
+        t.type = 'FLOATCONST'   # e.g. 1.23
     return t
 
 
