@@ -7,7 +7,7 @@ from util import LocationError, FatalError
 
 # operator precedence as per http://www.swansontec.com/sopc.html
 precedence = (
-    ('nonassoc', 'IF', 'DO', 'WHILE'),
+    ('nonassoc', 'IF', 'DO', 'WHILE', 'FOR', 'TO'),
     ('nonassoc', 'ELSE'),
     ('left', 'OR'),
     ('left', 'AND'),
@@ -181,7 +181,11 @@ def p_while(p):
 		doWhile = True
 	
 	p[0] = ast.While(cond, loopbody, doWhile).at(l)
-
+	
+def p_for(p):
+	'''statement : FOR LPAREN type ID ASSIGN expr TO expr RPAREN statement	%prec FOR'''
+	p[0] = ast.For(p[3], p[4], p[6], p[8], block(p[10]))
+	
 def block(stat):
     if isinstance(stat, ast.Block):
         return stat
