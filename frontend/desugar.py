@@ -47,6 +47,7 @@ class Desugarer(ASTTransformer):
         '''
         
         assert isinstance(f.loopbody, Block)
+        assert str(f.vartype) == "int"
         
         self.visit_children(f)
         
