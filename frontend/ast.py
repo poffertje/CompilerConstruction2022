@@ -330,8 +330,8 @@ class If(Statement):
         return s
 
 class While(Statement):
-    children = ['cond', 'loopbody']
-    types = dict(cond='Expression', loopbody='Block')
+    children = ['cond', 'loopbody', 'doWhile']
+    types = dict(cond='Expression', loopbody='Block', doWhile='bool')
 
     def __str__(self):
         s = 'while ({0.cond}) {0.loopbody}'.format(self)

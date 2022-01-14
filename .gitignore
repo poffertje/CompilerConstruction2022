@@ -16,4 +16,5 @@ lib/
 *.log
 *.ll
 *.o
-!frontend/test/*
+
+obj

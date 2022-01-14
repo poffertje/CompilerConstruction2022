@@ -155,31 +155,40 @@ class IRGen(ASTTransformer):
 
         # go to the end block to emit further instructions
         self.builder.position_at_start(bend)
-        
+
     def visitWhile(self, node):
-    	import sys
-    	prefix = self.builder.block.name
-    	bwhilecond = self.add_block(prefix + ".whilecond")
-    	bwhilebody = self.add_block(prefix + ".whilebody")
-    	bend = self.add_block(prefix + ".endwhile")
-    	
-    	# terminate current block and go to our condition
-    	self.builder.branch(bwhilecond)
-    	
-    	# insert instructions to check the condition after the 'whilecond' block
-    	self.builder.position_at_start(bwhilecond)
-    	cond = self.visit_before(node.cond, bwhilebody)
-    	self.builder.cbranch(cond, bwhilebody, bend)
-    	
-    	# insert instructions of the loop body right after the condition
-    	self.builder.position_at_start(bwhilebody)
-    	self.visit_before(node.loopbody, bend)
-    	
-    	# insert branch back to the beginning of the loop
-    	#self.builder.position_at_start(bendwhile)
-    	self.builder.branch(bwhilecond)
-    	
-    	self.builder.position_at_start(bend)
+        prefix = self.builder.block.name
+
+        # create blocks in the correct order, the order changes if it's a do-while loop
+        if not node.doWhile:
+            bwhilecond = self.add_block(prefix + ".whilecond")
+            bwhilebody = self.add_block(prefix + ".whilebody")
+            bend = self.add_block(prefix + ".endwhile")
+            bbegin = bwhilecond
+            baftercond = bwhilebody
+            bafterbody = bend
+        else:
+            bwhilebody = self.add_block(prefix + ".whilebody")
+            bwhilecond = self.add_block(prefix + ".whilecond")
+            bend = self.add_block(prefix + ".endwhile")
+            bbegin = bwhilebody
+            baftercond = bend
+            bafterbody = bwhilecond
+
+        # terminate current block and go to beginning block
+        self.builder.branch(bbegin)
+
+        # insert instructions to check the condition after the 'whilecond' block
+        self.builder.position_at_start(bwhilecond)
+        cond = self.visit_before(node.cond, baftercond)
+        self.builder.cbranch(cond, bwhilebody, bend)
+
+        # insert instructions of the loop body
+        self.builder.position_at_start(bwhilebody)
+        self.visit_before(node.loopbody, bafterbody)
+        self.builder.branch(bwhilecond)
+
+        self.builder.position_at_start(bend)
 
     def visitReturn(self, node):
         self.visit_children(node)
@@ -257,7 +266,7 @@ class IRGen(ASTTransformer):
         if node.op == '-':
             if str(node.ty) == 'float':
                 floatconst = ir.Constant(self.getty(node.ty), 0)
-                return self.builder.fsub(floatconst,self.visit(node.value))
+                return self.builder.fsub(floatconst, self.visit(node.value))
             else:
                 return self.builder.neg(self.visit(node.value))
 
@@ -276,7 +285,6 @@ class IRGen(ASTTransformer):
         if op == '||':
             yes = self.makebool(True)
             return self.lazy_conditional(node, node.lhs, yes, node.rhs)
-
 
         lty = node.lhs.ty
         rty = node.rhs.ty
@@ -303,7 +311,7 @@ class IRGen(ASTTransformer):
             callbacks = {
                 '+': b.add, '-': b.sub, '*': b.mul, '/': b.sdiv, '%': b.srem
             }
-    
+
             return callbacks[op.op](node.lhs, node.rhs)
 
     def lazy_conditional(self, node, cond, yesval, noval):
