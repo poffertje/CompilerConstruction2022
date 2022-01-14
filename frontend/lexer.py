@@ -45,6 +45,7 @@ tokens = (
 reserved_map['bool']  = 'TYPE'
 reserved_map['char']  = 'TYPE'
 reserved_map['int']   = 'TYPE'
+reserved_map['float'] = 'TYPE'
 reserved_map['void']  = 'TYPE'
 reserved_map['true']  = 'BOOLCONST'
 reserved_map['false'] = 'BOOLCONST'
