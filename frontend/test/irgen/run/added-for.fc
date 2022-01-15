@@ -1,0 +1,18 @@
+extern int printf(char[] format, ...);
+
+int main() {
+    for (int i = 0 to 100){
+        if (i % 3 == 0) {
+            i += 10;
+        }
+
+        if (i == 20) {
+            i = i - 1;
+            i = i * 2;
+        }
+            
+        printf("%d \n", i);
+    }
+
+    return 0;
+}

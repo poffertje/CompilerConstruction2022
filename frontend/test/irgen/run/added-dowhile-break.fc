@@ -1,0 +1,17 @@
+extern int printf(char[] format, ...);
+
+int main() {
+    int j = 0;
+    int i = 0;
+    do {
+        j = i;
+        printf("%d\n", i);
+        if (i == 5) {
+            break;
+        }
+        i = i + 1;
+    } while (j < 10);
+    printf("%d\n", j);
+
+    return 0;
+}
