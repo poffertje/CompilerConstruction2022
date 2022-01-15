@@ -18,6 +18,7 @@ reserved = (
     'return',
     'do', 'while',
     'for', 'to',
+    'break', 'continue'
 )
 reserved_map = dict((word, word.upper()) for word in reserved)
 
