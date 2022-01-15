@@ -54,8 +54,11 @@ class Desugarer(ASTTransformer):
         ref = VarUse(f.varname)
         whilebody = Block(f.loopbody.statements + [self.visitModification(Modification(ref, Operator.get('+'), IntConst(1)))])
         whilecond = BinaryOp(ref, Operator.get('<'), f.to)
-        
+        whileblock = While(whilecond, whilebody, False)
+        # update the iter property of the AST node to distinguish between while and for loops
+        whileblock.set_iter(ref)
+
         return Block([
             VarDef(f.vartype, f.varname, f._from),
-            While(whilecond, whilebody, False)
+            whileblock
         ])

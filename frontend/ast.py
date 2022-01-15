@@ -129,6 +129,7 @@ class Node(object):
             setattr(self, name, value)
 
         self.location = (None, 0, 0, 0, 0)
+        self.iter = None
 
     def __str__(self):
         return repr(self)
@@ -339,6 +340,8 @@ class While(Statement):
         s = 'while ({0.cond}) {0.loopbody}'.format(self)
         return s
 
+    def set_iter(self, ref):
+        self.iter = ref
 
 class For(Statement):
     children = ['vartype', 'varname', '_from', 'to', 'loopbody']

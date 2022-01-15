@@ -1,6 +1,7 @@
 from llvmlite import ir, binding
 from util import ASTTransformer
 import ast
+from ast import IntConst
 
 
 class IRGen(ASTTransformer):
@@ -186,7 +187,11 @@ class IRGen(ASTTransformer):
         self.builder.cbranch(cond, bwhilebody, bend)
         
         # Push ending block of this loop to loops stack
-        self.loops.append(bend)
+        # self.loops.append((bend, bwhilecond))
+        if node.iter is not None:
+            self.loops.append((bend, bwhilecond, node.iter))
+        else:
+            self.loops.append((bend, bwhilecond, None))
 
         # insert instructions of the loop body
         self.builder.position_at_start(bwhilebody)
@@ -195,7 +200,7 @@ class IRGen(ASTTransformer):
             self.builder.branch(bwhilecond)
             
         # Pop ending block of this loop from loops stack
-        assert self.loops[-1] == bend
+        assert self.loops[-1][0] == bend
         self.loops.pop()
 
         self.builder.position_at_start(bend)
@@ -216,8 +221,17 @@ class IRGen(ASTTransformer):
 
     def visitBreak(self, node):
         assert len(self.loops) > 0
-        self.builder.branch(self.loops[-1])
+        self.builder.branch(self.loops[-1][0])
         self.builder.position_at_start(self.add_block(self.builder.block.name + ".post_break"))
+
+    def visitContinue(self, node):
+        assert len(self.loops) > 0
+        if self.loops[-1][2] != None:
+            iter = self.loops[-1][2]
+            self.visitAssignment(ast.Assignment(iter, ast.BinaryOp(iter, ast.Operator.get("+"), IntConst(1))))
+        else:
+            self.builder.branch(self.loops[-1][1])
+            self.builder.position_at_start(self.add_block(self.builder.block.name + ".post_continue"))
 
     def visitVarDef(self, node):
         ty = self.getty(node._type)
