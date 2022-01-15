@@ -229,7 +229,13 @@ class IRGen(ASTTransformer):
         assert len(self.loops) > 0
         if self.loops[-1][2] != None:
             iter = self.loops[-1][2]
+<<<<<<< HEAD
             self.visitAssignment(ast.Assignment(iter, ast.BinaryOp(iter, ast.Operator.get("+"), IntConst(1)))
+=======
+            int = ast.IntConst(1)
+            int.ty = ast.Type.get("int")
+            self.visitAssignment(ast.Assignment(iter, ast.BinaryOp(iter, ast.Operator.get("+"), int)))
+>>>>>>> 7a5087cbadfa317e5093676bd5545ca4a97d7af3
         else:
             self.builder.branch(self.loops[-1][1])
             self.builder.position_at_start(self.add_block(

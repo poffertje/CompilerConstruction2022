@@ -9,8 +9,8 @@ int main(int argc, char[][] argv) {
     while (i <= 10) {
     	i += 1;
     	if (i == 3) {          
-		continue;
-	}
+			continue;
+		}
     	sum += i;
     	printf("Iteration %d\n", i);
     }

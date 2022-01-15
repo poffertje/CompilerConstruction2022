@@ -27,21 +27,22 @@ void test(int n) {
 }
 
 int main(int argc, char[][] argv) {
-    printf("Testing while loops with break statements\n");
+    printf("Testing for loops with break statements\n");
     
     test(1);
-    init("May be stuck in infinite loop");
-    while(true) {
+    init("This might print 10 times");
+    for(int i = 0 to 10) {
         break;
+        fail("Printing something");
         break;
         break;
     }
-    pass("Not stuck in infinite loop");
+    pass("Didn't print anything");
     
     test(2);
-    init("This could also be stuck in an infinite loop");
-    while(true) {
-        while(true) {
+    init("This might also print something 10 or more times");
+    for(int i = 0 to 10) {
+        for(int i = 0 to 10) {
             print("This should run once");
             break;
             fail("This should not run");
@@ -50,14 +51,14 @@ int main(int argc, char[][] argv) {
         break;
         fail("This should not run either");
     }
-    pass("Not stuck in an infinite loop");
+    pass("Didn't print something 10 or more times");
     
     test(3);
     init("The next line should start with (dot dot dot)...");
-    while(true) {
+    for(int i = 0 to 10) {
         break;
         fail("This should not run at all");
-        while(true) {
+        for(int i = 0 to 10) {
             fail("This is a bad loop");
         }
     }
