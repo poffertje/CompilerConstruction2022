@@ -1,0 +1,33 @@
+#include <cstdlib.fh>
+
+int main(int argc, char[][] argv) {
+    printf("May be stuck in infinite loop\n");
+    while(true) {
+        break;
+        break;
+        break;
+    }
+    printf("Not stuck in infinite loop\n");
+    printf("This could also be stuck in an infinite loop\n");
+    while(true) {
+        while(true) {
+            printf("This should run once\n");
+            break;
+            printf("This should not run\n");
+        }
+        printf("This should also run once\n");
+        break;
+        printf("This should not run either\n");
+    }
+    printf("Not stuck in an infinite loop\n");
+    printf("The next line should start with (dot dot dot)...\n");
+    while(true) {
+        break;
+        printf("This should not run at all\n");
+        while(true) {
+            printf("This is a bad loop\n");
+        }
+    }
+    printf("...it is indeed correct!\n");
+    return 0;
+}

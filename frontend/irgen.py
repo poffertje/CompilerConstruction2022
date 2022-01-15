@@ -184,12 +184,19 @@ class IRGen(ASTTransformer):
         self.builder.position_at_start(bwhilecond)
         cond = self.visit_before(node.cond, baftercond)
         self.builder.cbranch(cond, bwhilebody, bend)
+        
+        # Push ending block of this loop to loops stack
+        self.loops.append(bend)
 
         # insert instructions of the loop body
         self.builder.position_at_start(bwhilebody)
         self.visit_before(node.loopbody, bafterbody)
         if not self.builder.block.is_terminated:
             self.builder.branch(bwhilecond)
+            
+        # Pop ending block of this loop from loops stack
+        assert self.loops[-1] == bend
+        self.loops.pop()
 
         self.builder.position_at_start(bend)
 
@@ -208,22 +215,9 @@ class IRGen(ASTTransformer):
         return ret
 
     def visitBreak(self, node):
-        blockname = self.builder.block.name.split('.')
-        endblockname = ''
-
-        for i in range(len(blockname)-1, 0, -1):
-            if blockname[i] == 'whilebody':
-                blockname[i] = 'endwhile'
-                for block in blockname:
-                    endblockname += block + '.'
-                endblockname = endblockname[0:-1]
-            else:
-                del blockname[i]
-
-        for block in self.insert_blocks:
-            if block.name == endblockname:
-                self.builder.branch(block)
-                break
+        assert len(self.loops) > 0
+        self.builder.branch(self.loops[-1])
+        self.builder.position_at_start(self.add_block(self.builder.block.name + ".post_break"))
 
     def visitVarDef(self, node):
         ty = self.getty(node._type)
