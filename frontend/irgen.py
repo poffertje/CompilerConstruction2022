@@ -212,8 +212,8 @@ class IRGen(ASTTransformer):
         endblockname = ''
 
         for i in range(len(blockname)-1, 0, -1):
-            if blockname[i] == 'body':
-                blockname[i] = 'endbody'
+            if blockname[i] == 'whilebody':
+                blockname[i] = 'endwhile'
                 for block in blockname:
                     endblockname += block + '.'
                 endblockname = endblockname[0:-1]
