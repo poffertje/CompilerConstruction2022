@@ -232,10 +232,9 @@ class IRGen(ASTTransformer):
             int = ast.IntConst(1)
             int.ty = ast.Type.get("int")
             self.visitAssignment(ast.Assignment(iter, ast.BinaryOp(iter, ast.Operator.get("+"), int)))
-        else:
-            self.builder.branch(self.loops[-1][1])
-            self.builder.position_at_start(self.add_block(
-                self.builder.block.name + ".post_continue"))
+        
+        self.builder.branch(self.loops[-1][1])
+        self.builder.position_at_start(self.add_block(self.builder.block.name + ".post_continue"))
 
     def visitVarDef(self, node):
         ty=self.getty(node._type)
