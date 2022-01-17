@@ -192,8 +192,7 @@ class IRGen(ASTTransformer):
         # insert instructions of the loop body
         self.builder.position_at_start(bwhilebody)
         self.visit_before(node.loopbody, bafterbody)
-        if not self.builder.block.is_terminated:
-            self.builder.branch(bwhilecond)
+        self.builder.branch(bwhilecond)
 
         # pop ending block of this loop from loops stack
         assert self.loops[-1][0] == bend
