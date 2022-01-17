@@ -1,7 +1,6 @@
 from llvmlite import ir, binding
 from util import ASTTransformer
 import ast
-from ast import IntConst
 
 
 class IRGen(ASTTransformer):
@@ -146,15 +145,13 @@ class IRGen(ASTTransformer):
         # insert instructions for the 'if' block before the 'else' block
         self.builder.position_at_start(bif)
         self.visit_before(node.yesbody, belse)
-        if not self.builder.block.is_terminated:
-            self.builder.branch(bend)
+        self.builder.branch(bend)
 
         # insert instructions for the 'else' block before the end block
         if node.nobody:
             self.builder.position_at_start(belse)
             self.visit_before(node.nobody, bend)
-            if not self.builder.block.is_terminated:
-                self.builder.branch(bend)
+            self.builder.branch(bend)
 
         # go to the end block to emit further instructions
         self.builder.position_at_start(bend)
@@ -231,6 +228,7 @@ class IRGen(ASTTransformer):
         if iter is not None:
             add_node = ast.IntConst(1)
             add_node.ty = ast.Type('int')
+            # every time continue is called add 1 to the current iteration variable
             value = ast.BinaryOp(iter, ast.Operator.get('+'), add_node)
             self.visitAssignment(ast.Assignment(iter, value))
         
