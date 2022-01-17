@@ -186,8 +186,7 @@ class IRGen(ASTTransformer):
         cond = self.visit_before(node.cond, baftercond)
         self.builder.cbranch(cond, bwhilebody, bend)
 
-        # Push ending block of this loop to loops stack
-        # self.loops.append((bend, bwhilecond))
+        # push ending block of this loop to loops stack
         if node.iter is not None:
             self.loops.append((bend, bwhilecond, node.iter))
         else:
@@ -199,7 +198,7 @@ class IRGen(ASTTransformer):
         if not self.builder.block.is_terminated:
             self.builder.branch(bwhilecond)
 
-        # Pop ending block of this loop from loops stack
+        # pop ending block of this loop from loops stack
         assert self.loops[-1][0] == bend
         self.loops.pop()
 
@@ -229,9 +228,10 @@ class IRGen(ASTTransformer):
         assert len(self.loops) > 0
         if self.loops[-1][2] != None:
             iter = self.loops[-1][2]
-            int = ast.IntConst(1)
-            int.ty = ast.Type.get("int")
-            self.visitAssignment(ast.Assignment(iter, ast.BinaryOp(iter, ast.Operator.get("+"), int)))
+            add = ast.IntConst(1)
+            add.ty = ast.Type.get("int")
+            value = ast.BinaryOp(iter, ast.Operator.get("+"), add)
+            self.visitAssignment(ast.Assignment(iter, value))
         
         self.builder.branch(self.loops[-1][1])
         self.builder.position_at_start(self.add_block(self.builder.block.name + ".post_continue"))
@@ -297,8 +297,9 @@ class IRGen(ASTTransformer):
 
         if node.op == '-':
             if str(node.ty) == 'float':
-                floatconst=ir.Constant(self.getty(node.ty), 0)
-                return self.builder.fsub(floatconst, self.visit(node.value))
+                # for floating point unary negation the following transformation is used: -x = 0 - x 
+                zerofloat=ir.Constant(self.getty(node.ty), 0)
+                return self.builder.fsub(zerofloat, self.visit(node.value))
             else:
                 return self.builder.neg(self.visit(node.value))
 
@@ -308,6 +309,8 @@ class IRGen(ASTTransformer):
     def visitBinaryOp(self, node):
         op=node.op
         b=self.builder
+        ltype=node.lhs.ty
+        rtype=node.rhs.ty
 
         # logical operators don't exist in LLVM
         if op == '&&':
@@ -318,23 +321,19 @@ class IRGen(ASTTransformer):
             yes=self.makebool(True)
             return self.lazy_conditional(node, node.lhs, yes, node.rhs)
 
-        lty=node.lhs.ty
-        rty=node.rhs.ty
-
         self.visit_children(node)
 
-        if str(lty) == 'float' or str(rty) == 'float':
+        # both operands of binary operators must have the same type since FenneC does not support type-casting
+        if str(ltype) == 'float' and str(rtype) == 'float':
             if op.is_equality() or op.is_relational():
                 if op == "!=":
-                    return b.fcmp_unordered("!=", node.lhs, node.rhs)
+                    return b.fcmp_unordered(op.op, node.lhs, node.rhs)
                 else:
                     return b.fcmp_ordered(op.op, node.lhs, node.rhs)
 
             callbacks={
                 '+': b.fadd, '-': b.fsub, '*': b.fmul, '/': b.fdiv, '%': b.frem
             }
-
-            return callbacks[op.op](node.lhs, node.rhs)
 
         else:
             if op.is_equality() or op.is_relational():
@@ -344,7 +343,7 @@ class IRGen(ASTTransformer):
                 '+': b.add, '-': b.sub, '*': b.mul, '/': b.sdiv, '%': b.srem
             }
 
-            return callbacks[op.op](node.lhs, node.rhs)
+        return callbacks[op.op](node.lhs, node.rhs)
 
     def lazy_conditional(self, node, cond, yesval, noval):
         b=self.builder
