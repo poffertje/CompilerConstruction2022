@@ -132,12 +132,23 @@ class TypeChecker(ASTVisitor):
 
     def visitWhile(self, node):
         # condition must be bool
+        in_nested_loop = self.in_loop
         self.in_loop = True
         self.visit_children(node)
+        # this condition ensures that break/continue are still placeable inside a nested loop
+        if in_nested_loop == False:
+            # if the node is not inside a nested loop, then it possibly has left the loop body
+            self.in_loop = False
         self.check_type(node.cond, self.tbool)
 
     def visitFor(self, node):
+        in_nested_loop = self.in_loop
+        self.in_loop = True
         self.visit_children(node)
+        # this condition ensures that break/continue are still placeable inside a nested loop
+        if in_nested_loop == False:
+            # if the node is not inside a nested loop, then it possibly has left the loop body
+            self.in_loop = False
         self.check_type(node.vartype, self.tint)
 
     def visitReturn(self, node):
@@ -157,11 +168,11 @@ class TypeChecker(ASTVisitor):
 
     def visitBreak(self, node):
         if not self.in_loop:
-            raise NodeError(node, 'Error: break is outside of a loop')
+            raise NodeError(node, 'Error: break is defined outside of a loop')
 
     def visitContinue(self, node):
         if not self.in_loop:
-            raise NodeError(node, 'Error: continue is outside of a loop')
+            raise NodeError(node, 'Error: continue is defined outside of a loop')
 
     def visitVarUse(self, node):
         # variable uses inherit the type of their declaration
