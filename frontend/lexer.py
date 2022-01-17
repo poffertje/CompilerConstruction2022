@@ -100,7 +100,7 @@ def t_ID(t):
 
 
 def t_number(t):
-    r'0x[a-fA-F0-9]+|\d+\.\d+|\d+'
+    r'0x[a-fA-F0-9]+|\d+\.\d+|\d+\.\d*|\d*\.\d+|\d+'
     if t.value.startswith('0x'):
         t.type = 'HEXCONST'     # e.g. 0xabc123
     elif t.value.isdigit():
