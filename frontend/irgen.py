@@ -222,19 +222,20 @@ class IRGen(ASTTransformer):
         assert len(self.loops) > 0
         self.builder.branch(self.loops[-1][0])
         self.builder.position_at_start(self.add_block(
-            self.builder.block.name + ".post_break"))
+            self.builder.block.name + '.post_break'))
 
     def visitContinue(self, node):
         assert len(self.loops) > 0
-        if self.loops[-1][2] != None:
-            iter = self.loops[-1][2]
-            add = ast.IntConst(1)
-            add.ty = ast.Type.get("int")
-            value = ast.BinaryOp(iter, ast.Operator.get("+"), add)
+        iter = self.loops[-1][2]
+        # if a loop contains an iteration variable, then it is a for loop and it requires to be handled differntly 
+        if iter is not None:
+            add_node = ast.IntConst(1)
+            add_node.ty = ast.Type('int')
+            value = ast.BinaryOp(iter, ast.Operator.get('+'), add_node)
             self.visitAssignment(ast.Assignment(iter, value))
         
         self.builder.branch(self.loops[-1][1])
-        self.builder.position_at_start(self.add_block(self.builder.block.name + ".post_continue"))
+        self.builder.position_at_start(self.add_block(self.builder.block.name + '.post_continue'))
 
     def visitVarDef(self, node):
         ty=self.getty(node._type)
@@ -291,14 +292,14 @@ class IRGen(ASTTransformer):
     def visitUnaryOp(self, node):
         # logical operators don't exist in LLVM
         if node.op == '!':
-            eq=ast.Operator.get('==')
+            eq = ast.Operator.get('==')
             false=self.makebool(False)
             return self.visit(ast.BinaryOp(node.value, eq, false).at(node))
 
         if node.op == '-':
             if str(node.ty) == 'float':
                 # for floating point unary negation the following transformation is used: -x = 0 - x 
-                zerofloat=ir.Constant(self.getty(node.ty), 0)
+                zerofloat = ir.Constant(self.getty(node.ty), 0)
                 return self.builder.fsub(zerofloat, self.visit(node.value))
             else:
                 return self.builder.neg(self.visit(node.value))
