@@ -310,7 +310,6 @@ class IRGen(ASTTransformer):
         op=node.op
         b=self.builder
         ltype=node.lhs.ty
-        rtype=node.rhs.ty
 
         # logical operators don't exist in LLVM
         if op == '&&':
@@ -324,9 +323,10 @@ class IRGen(ASTTransformer):
         self.visit_children(node)
 
         # both operands of binary operators must have the same type since FenneC does not support type-casting
-        if str(ltype) == 'float' and str(rtype) == 'float':
+        if str(ltype) == 'float':
             if op.is_equality() or op.is_relational():
-                if op == "!=":
+                if op == '!=':
+                    # unordered comparison returns True for NaN
                     return b.fcmp_unordered(op.op, node.lhs, node.rhs)
                 else:
                     return b.fcmp_ordered(op.op, node.lhs, node.rhs)

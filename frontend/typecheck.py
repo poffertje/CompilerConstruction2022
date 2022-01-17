@@ -134,8 +134,6 @@ class TypeChecker(ASTVisitor):
         # condition must be bool
         self.in_loop = True
         self.visit_children(node)
-        if not self.in_loop:
-            self.in_loop = False
         self.check_type(node.cond, self.tbool)
 
     def visitFor(self, node):
