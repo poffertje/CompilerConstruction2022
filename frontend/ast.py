@@ -343,6 +343,7 @@ class While(Statement):
     def set_iter(self, ref):
         self.iter = ref
 
+
 class For(Statement):
     children = ['vartype', 'varname', '_from', 'to', 'loopbody']
     types = dict(vartype="Type", varname='str', _from='Expression',
@@ -362,16 +363,14 @@ class Return(Statement):
 
 
 class Break(Statement):
-    children = []
-    types = dict()
+# does not have children
 
     def __str__(self):
          return 'break;'
 
 
 class Continue(Statement):
-    children = []
-    types = dict()
+# does not have children
 
     def __str__(self):
         return 'continue;'
