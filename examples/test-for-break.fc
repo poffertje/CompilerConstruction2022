@@ -1,0 +1,67 @@
+#include <cstdlib.fh>
+
+static int test_num = 0;
+
+void print_test_str(char[] state, char[] str) {
+    printf("[Test %d = %s] %s\n", test_num, state, str);
+}
+
+void pass(char[] str) {
+    print_test_str("PASS", str);
+}
+
+void fail(char[] str) {
+    print_test_str("FAIL", str);
+}
+
+void init(char[] str) {
+    print_test_str("INIT", str);
+}
+
+void print(char[] str) {
+    print_test_str("    ", str);
+}
+
+void test(int n) {
+    test_num = n;
+}
+
+int main(int argc, char[][] argv) {
+    printf("Testing for loops with break statements\n");
+    
+    test(1);
+    init("This might print 10 times");
+    for(int i = 0 to 10) {
+        break;
+        fail("Printing something");
+        break;
+        break;
+    }
+    pass("Didn't print anything");
+    
+    test(2);
+    init("This might also print something 10 or more times");
+    for(int i = 0 to 10) {
+        for(int i = 0 to 10) {
+            print("This should run once");
+            break;
+            fail("This should not run");
+        }
+        print("This should also run once");
+        break;
+        fail("This should not run either");
+    }
+    pass("Didn't print something 10 or more times");
+    
+    test(3);
+    init("The next line should start with (dot dot dot)...");
+    for(int i = 0 to 10) {
+        break;
+        fail("This should not run at all");
+        for(int i = 0 to 10) {
+            fail("This is a bad loop");
+        }
+    }
+    pass("...it is indeed correct!");
+    return 0;
+}

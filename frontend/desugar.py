@@ -1,6 +1,6 @@
 from util import ASTTransformer
 from ast import Type, Operator, VarDef, ArrayDef, Assignment, Modification, \
-        If, Block, VarUse, BinaryOp, IntConst, Return
+        If, Block, VarUse, BinaryOp, IntConst, Return, While, For
 
 
 class Desugarer(ASTTransformer):
@@ -30,3 +30,35 @@ class Desugarer(ASTTransformer):
         # to:   lhs = lhs op rhs
         self.visit_children(m)
         return Assignment(m.ref, BinaryOp(m.ref, m.op, m.value)).at(m)
+        
+    def visitFor(self, f):
+        '''
+        from:   for (type id = init to end) {
+                    ...
+                }
+                
+        to:     {
+                    type id = init;
+                    while (id < end) {
+                        ...
+                        id += 1
+                    }
+                }
+        '''
+        
+        assert isinstance(f.loopbody, Block)
+        assert str(f.vartype) == "int"
+        
+        self.visit_children(f)
+        
+        ref = VarUse(f.varname)
+        whilebody = Block(f.loopbody.statements + [self.visitModification(Modification(ref, Operator.get('+'), IntConst(1)))])
+        whilecond = BinaryOp(ref, Operator.get('<'), f.to)
+        whileblock = While(whilecond, whilebody, False)
+        # update the iter property of the AST node to distinguish between while and for loops
+        whileblock.set_iter(ref)
+
+        return Block([
+            VarDef(f.vartype, f.varname, f._from),
+            whileblock
+        ])

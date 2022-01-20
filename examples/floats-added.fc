@@ -1,0 +1,54 @@
+extern int printf(char[] format, ...);
+
+int main() {
+    float f = 4.0;
+    printf("%.1f\n", f); 			// 4.0
+    printf("%.2f\n", -f);                  	// -4.00
+    printf("negation\n");
+    printf("%.3f\n", f - f);              	// 0.000
+    printf("%.3f\n", f - -f);              	// 8.000
+    printf("%.3f\n", -f - f);              	// -8.000
+    printf("%.3f\n", -f - -f);              	// 0.000
+    printf("negation with zero\n");
+    printf("%.3f\n", f - 0.0);              	// 4.000
+    printf("%.3f\n", -f - 0.0);              	// -4.000
+    printf("%.3f\n", 0.0 - f);              	// -4.000
+    printf("%.3f\n", 0.0 - -f);              	// 4.000
+    printf("addition\n");
+    printf("%.3f\n", f + f);   	     	// 8.000
+    printf("%.3f\n", f + -f);   	     	// 0.000
+    printf("%.3f\n", -f + f);   	     	// 0.000
+    printf("%.3f\n", -f + -f);   	     	// -8.000
+    printf("addition with zero\n");
+    printf("%.3f\n", f + 0.0);              	// 4.000
+    printf("%.3f\n", -f + 0.0);              	// -4.000
+    printf("%.3f\n", 0.0 + f);              	// 4.000
+    printf("%.3f\n", 0.0 + -f);              	// -4.000
+    printf("multiplication\n");	
+    printf("%.3f\n", f * f);              	// 16.000
+    printf("%.3f\n", f * -f);   	     	// -16.000
+    printf("%.3f\n", -f * f);   	     	// -16.000
+    printf("%.3f\n", -f * -f);   	     	// 16.000
+    printf("multiplication with zero\n");
+    printf("%.3f\n", f * 0.0);   	     	// 0.000
+    printf("%.3f\n", -f * 0.0);   	     	// -0.000	
+    printf("%.3f\n", 0.0 * f);   	     	// 0.000
+    printf("%.3f\n", 0.0 * -f);   	     	// -0.000
+    printf("division\n");
+    printf("%.3f\n", f / f);              	// 1.000
+    printf("%.3f\n", f / -f);   	     	// -1.000
+    printf("%.3f\n", -f / f);   	     	// -1.000
+    printf("%.3f\n", -f / -f);   	     	// 1.000
+    printf("division with zero\n");
+    printf("%.3f\n", f / 0.0);              	// inf
+    printf("%.3f\n", -f / 0.0);              	// -inf
+    printf("%.3f\n", 0.0 / f);   	     	// 0.000
+    printf("%.3f\n", 0.0 / -f);   	     	// -0.000
+    printf("modulo\n");
+    printf("%f\n", 4.0 % 1.0);   	     	// 0.000000
+    printf("%f\n", 4.0 % 3.0);   	     	// 1.000000
+    printf("%f\n", 4.0 % 4.0);   	     	// 0.000000
+    printf("%f\n", 4.0 % 5.0);   	     	// 4.000000
+	
+    return 0;
+}

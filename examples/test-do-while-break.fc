@@ -1,0 +1,66 @@
+#include <cstdlib.fh>
+
+static int test_num = 0;
+
+void print_test_str(char[] state, char[] str) {
+    printf("[Test %d = %s] %s\n", test_num, state, str);
+}
+
+void pass(char[] str) {
+    print_test_str("PASS", str);
+}
+
+void fail(char[] str) {
+    print_test_str("FAIL", str);
+}
+
+void init(char[] str) {
+    print_test_str("INIT", str);
+}
+
+void print(char[] str) {
+    print_test_str("    ", str);
+}
+
+void test(int n) {
+    test_num = n;
+}
+
+int main(int argc, char[][] argv) {
+    printf("Testing do-while loops with break statements\n");
+    
+    test(1);
+    init("May be stuck in infinite loop");
+    do {
+        break;
+        break;
+        break;
+    } while(true);
+    pass("Not stuck in infinite loop");
+    
+    test(2);
+    init("This could also be stuck in an infinite loop");
+    do {
+        do {
+            print("This should run once");
+            break;
+            fail("This should not run");
+        } while(true);
+        print("This should also run once");
+        break;
+        fail("This should not run either");
+    } while(true);
+    pass("Not stuck in an infinite loop");
+    
+    test(3);
+    init("The next line should start with (dot dot dot)...");
+    do {
+        break;
+        fail("This should not run at all");
+        do {
+            fail("This is a bad loop");
+        } while(true);
+    } while(true);
+    pass("...it is indeed correct!");
+    return 0;
+}

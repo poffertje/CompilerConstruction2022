@@ -7,7 +7,7 @@ from util import LocationError, FatalError
 
 # operator precedence as per http://www.swansontec.com/sopc.html
 precedence = (
-    ('nonassoc', 'IF'),
+    ('nonassoc', 'IF', 'DO', 'WHILE', 'FOR', 'TO', 'BREAK', 'CONTINUE'),
     ('nonassoc', 'ELSE'),
     ('left', 'OR'),
     ('left', 'AND'),
@@ -162,6 +162,41 @@ def p_if(p):
                  | IF LPAREN expr RPAREN statement ELSE statement %prec ELSE'''
     nobody = block(p[7]) if len(p) == 8 else None
     p[0] = ast.If(p[3], block(p[5]), nobody).at(loc(p, 1, 4))
+    
+
+def p_while(p):
+	'''statement : WHILE LPAREN expr RPAREN statement
+		     | DO statement WHILE LPAREN expr RPAREN SEMICOL'''
+	
+	if len(p) == 6:
+		# while
+		loopbody = block(p[5])
+		cond = p[3]
+		l = loc(p, 1, 4)
+		doWhile = False
+	else:
+		# do-while
+		loopbody = block(p[2])
+		cond = p[5]
+		l = loc(p, 1, 1)
+		doWhile = True
+	
+	p[0] = ast.While(cond, loopbody, doWhile).at(l)
+	
+
+def p_for(p):
+	'''statement : FOR LPAREN type ID ASSIGN expr TO expr RPAREN statement	%prec FOR'''
+	p[0] = ast.For(p[3], p[4], p[6], p[8], block(p[10]))
+
+
+def p_break(p):
+    '''statement : BREAK SEMICOL'''
+    p[0] = ast.Break().at(loc(p, 1))
+
+
+def p_continue(p):
+    '''statement : CONTINUE SEMICOL'''
+    p[0] = ast.Continue().at(loc(p, 1))
 
 
 def block(stat):
@@ -253,6 +288,11 @@ def p_charconst(p):
 def p_intconst(p):
     '''expr : INTCONST'''
     p[0] = ast.IntConst(int(p[1])).at(loc(p))
+
+
+def p_floatconst(p):
+    '''expr : FLOATCONST'''
+    p[0] = ast.FloatConst(float(p[1])).at(loc(p))
 
 
 def p_hexconst(p):

@@ -9,7 +9,7 @@ class Type(object):
     can also pass array types like 'int[]' to `get` which will return an
     `ArrayType`.
     '''
-    base_types = frozenset(['bool', 'char', 'int', 'void'])
+    base_types = frozenset(['bool', 'char', 'int', 'void', 'float'])
     int_bits = 32
     cache = {}
 
@@ -59,7 +59,7 @@ class Operator(object):
     ops_relational = '< > <= >='.split()
     ops_logical = '&& || !'.split()
     ops_all = frozenset(ops_arithmetic + ops_equality + ops_relational +
-            ops_logical)
+                        ops_logical)
 
     cache = {}
 
@@ -124,11 +124,12 @@ class Node(object):
                 value = None
             else:
                 raise RuntimeError('missing initalizer %s for %s' %
-                        (name, self.__class__.__name__))
+                                   (name, self.__class__.__name__))
 
             setattr(self, name, value)
 
-        self.location = (None, 0, 0, 0 ,0)
+        self.location = (None, 0, 0, 0, 0)
+        self.iter = None
 
     def __str__(self):
         return repr(self)
@@ -158,22 +159,22 @@ class Node(object):
                 ty = ty[:-1]
             elif child is None:
                 raise ASTError('non-optional child %s.%s has value None: %s' %
-                        (myname, name, repr(self)))
+                               (myname, name, repr(self)))
 
             if ty.endswith('*'):
                 if not isinstance(child, list):
                     print(repr(self))
                     raise ASTError('%s.%s should have type %s: %s' %
-                            (myname, name, ty, child))
+                                   (myname, name, ty, child))
                 ty = ty[:-1]
 
             if ty.endswith('+'):
                 if not isinstance(child, list):
                     raise ASTError('%s.%s should have type %s: %s' %
-                            (myname, name, ty, child))
+                                   (myname, name, ty, child))
                 if len(child) == 0:
                     raise ASTError('%s.%s should not be empty: %s' %
-                            (myname, name, repr(self)))
+                                   (myname, name, repr(self)))
                 ty = ty[:-1]
 
             cls = globals()[ty] if ty in globals() else getattr(builtins, ty)
@@ -182,10 +183,10 @@ class Node(object):
                 for i, node in enumerate(child):
                     if not isinstance(node, cls):
                         raise ASTError('%s.%s[%d] should have type %s (found %s): %s' %
-                                (myname, name, i, ty, type(node).__name__, repr(self)))
+                                       (myname, name, i, ty, type(node).__name__, repr(self)))
             elif not isinstance(child, cls) and child is not None:
                 raise ASTError('%s.%s should have type %s (found %s): %s' %
-                        (myname, name, ty, type(child).__name__, repr(self)))
+                               (myname, name, ty, type(child).__name__, repr(self)))
 
             if isinstance(child, Node):
                 child.verify()
@@ -256,7 +257,7 @@ class GlobalDef(Declaration):
 
     def __str__(self):
         return '{static}{0._type} {0.name} = {0.value};'.format(self,
-                static='static ' if self.static else '')
+                                                                static='static ' if self.static else '')
 
 
 class FunDec(Declaration):
@@ -273,8 +274,8 @@ class FunDef(Declaration):
 
     def __str__(self):
         return '{static}{ty} {0.body}'.format(self,
-                static='static ' if self.static else '',
-                ty=self._type.tostring(self.name))
+                                              static='static ' if self.static else '',
+                                              ty=self._type.tostring(self.name))
 
 
 class FunType(Node):
@@ -286,9 +287,10 @@ class FunType(Node):
         if self.varargs:
             dots = ', ...' if len(self.params) else '...'
         return '{0.return_type} {name}({params}{dots})'.format(self,
-                name=name,
-                params=', '.join(map(str, self.params)),
-                dots=dots)
+                                                               name=name,
+                                                               params=', '.join(
+                                                                   map(str, self.params)),
+                                                               dots=dots)
 
 
 class Param(Node):
@@ -330,12 +332,48 @@ class If(Statement):
         return s
 
 
+class While(Statement):
+    children = ['cond', 'loopbody', 'doWhile']
+    types = dict(cond='Expression', loopbody='Block', doWhile='bool')
+
+    def __str__(self):
+        s = 'while ({0.cond}) {0.loopbody}'.format(self)
+        return s
+
+    def set_iter(self, ref):
+        self.iter = ref
+
+
+class For(Statement):
+    children = ['vartype', 'varname', '_from', 'to', 'loopbody']
+    types = dict(vartype="Type", varname='str', _from='Expression',
+                 to='Expression', loopbody='Block')
+
+    def __str__(self):
+        s = 'for ({0.vartype} {0.varname} = {0._from} to {0.to}) {0.loopbody}'.format(self)
+        return s
+
+
 class Return(Statement):
     children = ['value']
     types = dict(value='Expression?')
 
     def __str__(self):
         return 'return;' if self.value is None else 'return {0.value};'.format(self)
+
+
+class Break(Statement):
+# does not have children
+
+    def __str__(self):
+         return 'break;'
+
+
+class Continue(Statement):
+# does not have children
+
+    def __str__(self):
+        return 'continue;'
 
 
 class Block(Statement):
@@ -449,6 +487,14 @@ class CharConst(Const):
 class IntConst(Const):
     children = ['value']
     types = dict(value='int')
+
+    def __str__(self):
+        return str(self.value)
+
+
+class FloatConst(Const):
+    children = ['value']
+    types = dict(value='float')
 
     def __str__(self):
         return str(self.value)

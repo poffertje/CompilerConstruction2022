@@ -1,0 +1,23 @@
+#include <cstdlib.fh>
+
+int main(int argc, char[][] argv) {
+	int initial = random();
+	int n = initial + 1;
+	bool executed = false;
+	do {
+		executed = true;
+		n = random();
+		printf("Got number %d\n", n);
+	} while(n < initial);
+
+	if(executed)
+		if(n >= initial) {
+			printf("%d is a lucky number!\n", n);
+		} else {
+			printf("Error, condition was not upheld\n");
+		}
+	else
+		printf("The loop never ran, even though it is a do-while loop! There is a bug\n");
+	
+	return 0;
+}

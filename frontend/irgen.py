@@ -156,6 +156,50 @@ class IRGen(ASTTransformer):
         # go to the end block to emit further instructions
         self.builder.position_at_start(bend)
 
+    def visitWhile(self, node):
+        prefix = self.builder.block.name
+
+        # create blocks in the correct order, the order changes if it's a do-while loop
+        if not node.doWhile:
+            bwhilecond = self.add_block(prefix + ".whilecond")
+            bwhilebody = self.add_block(prefix + ".whilebody")
+            bend = self.add_block(prefix + ".endwhile")
+            bbegin = bwhilecond
+            baftercond = bwhilebody
+            bafterbody = bend
+        else:
+            bwhilebody = self.add_block(prefix + ".whilebody")
+            bwhilecond = self.add_block(prefix + ".whilecond")
+            bend = self.add_block(prefix + ".endwhile")
+            bbegin = bwhilebody
+            baftercond = bend
+            bafterbody = bwhilecond
+
+        # terminate current block and go to beginning block
+        self.builder.branch(bbegin)
+
+        # insert instructions to check the condition after the 'whilecond' block
+        self.builder.position_at_start(bwhilecond)
+        cond = self.visit_before(node.cond, baftercond)
+        self.builder.cbranch(cond, bwhilebody, bend)
+
+        # push ending block of this loop to loops stack
+        if node.iter is not None:
+            self.loops.append((bend, bwhilecond, node.iter))
+        else:
+            self.loops.append((bend, bwhilecond, None))
+
+        # insert instructions of the loop body
+        self.builder.position_at_start(bwhilebody)
+        self.visit_before(node.loopbody, bafterbody)
+        self.builder.branch(bwhilecond)
+
+        # pop ending block of this loop from loops stack
+        assert self.loops[-1][0] == bend
+        self.loops.pop()
+
+        self.builder.position_at_start(bend)
+
     def visitReturn(self, node):
         self.visit_children(node)
 
@@ -170,45 +214,65 @@ class IRGen(ASTTransformer):
 
         return ret
 
+    def visitBreak(self, node):
+        assert len(self.loops) > 0
+        self.builder.branch(self.loops[-1][0])
+        self.builder.position_at_start(self.add_block(
+            self.builder.block.name + '.post_break'))
+
+    def visitContinue(self, node):
+        assert len(self.loops) > 0
+        iter = self.loops[-1][2]
+        # if a loop contains an iteration variable, then it is a for loop and it requires to be handled differntly 
+        if iter is not None:
+            add_node = ast.IntConst(1)
+            add_node.ty = ast.Type('int')
+            # every time continue is called add 1 to the current iteration variable
+            value = ast.BinaryOp(iter, ast.Operator.get('+'), add_node)
+            self.visitAssignment(ast.Assignment(iter, value))
+        
+        self.builder.branch(self.loops[-1][1])
+        self.builder.position_at_start(self.add_block(self.builder.block.name + '.post_continue'))
+
     def visitVarDef(self, node):
-        ty = self.getty(node._type)
-        self.vars[node] = alloca = self.builder.alloca(ty, name=node.name)
+        ty=self.getty(node._type)
+        self.vars[node]=alloca=self.builder.alloca(ty, name=node.name)
         self.builder.store(self.visit(node.value), alloca)
         return alloca
 
     def visitArrayDef(self, node):
-        ty = self.getty(node._type.base)
-        size = self.visit(node.size)
-        self.vars[node] = alloca = self.builder.alloca(ty, size, node.name)
+        ty=self.getty(node._type.base)
+        size=self.visit(node.size)
+        self.vars[node]=alloca=self.builder.alloca(ty, size, node.name)
 
         # zero-initialize using memset
-        ptr = self.builder.bitcast(alloca, ir.IntType(8).as_pointer())
-        zchar = self.getint(0, 8)
-        elsize = self.getint(ty.get_abi_size(self.target_data))
-        nbytes = self.builder.mul(size, elsize, name='nbytes')
-        no = self.getint(0, 1)
+        ptr=self.builder.bitcast(alloca, ir.IntType(8).as_pointer())
+        zchar=self.getint(0, 8)
+        elsize=self.getint(ty.get_abi_size(self.target_data))
+        nbytes=self.builder.mul(size, elsize, name='nbytes')
+        no=self.getint(0, 1)
         self.builder.call(self.get_memset(), [ptr, zchar, nbytes, no])
 
         return alloca
 
     def get_memset(self):
         if self.memset is None:
-            args = [ir.IntType(8).as_pointer(), ir.IntType(32)]
-            self.memset = self.module.declare_intrinsic('llvm.memset', args)
+            args=[ir.IntType(8).as_pointer(), ir.IntType(32)]
+            self.memset=self.module.declare_intrinsic('llvm.memset', args)
         return self.memset
 
     def visitVarUse(self, node):
-        isarray = node.ty.is_array()
+        isarray=node.ty.is_array()
         self.visit_children(node)
-        ptr = self.vars[node.definition]
-        name = node.name
+        ptr=self.vars[node.definition]
+        name=node.name
 
         if node.index:
             # globals have one extra pointer level, load the pointer value first
             if isinstance(ptr, ir.GlobalVariable):
-                ptr = self.builder.load(ptr, node.name)
+                ptr=self.builder.load(ptr, node.name)
 
-            ptr = self.builder.gep(ptr, [node.index], False, name + '.ptr')
+            ptr=self.builder.gep(ptr, [node.index], False, name + '.ptr')
             name += '.idx'
         elif isarray and not isinstance(ptr, ir.GlobalVariable):
             # local arrays that are used directly as parameters are alloca's,
@@ -219,66 +283,86 @@ class IRGen(ASTTransformer):
 
     def visitIndex(self, node):
         self.visit_children(node)
-        ptr = self.builder.gep(node.base, [node.index])
+        ptr=self.builder.gep(node.base, [node.index])
         return self.builder.load(ptr)
 
     def visitUnaryOp(self, node):
         # logical operators don't exist in LLVM
         if node.op == '!':
             eq = ast.Operator.get('==')
-            false = self.makebool(False)
+            false=self.makebool(False)
             return self.visit(ast.BinaryOp(node.value, eq, false).at(node))
 
         if node.op == '-':
-            return self.builder.neg(self.visit(node.value))
+            if str(node.ty) == 'float':
+                # for floating point unary negation the following transformation is used: -x = 0 - x 
+                zerofloat = ir.Constant(self.getty(node.ty), 0)
+                return self.builder.fsub(zerofloat, self.visit(node.value))
+            else:
+                return self.builder.neg(self.visit(node.value))
 
         assert node.op == '~'
         return self.builder.not_(self.visit(node.value))
 
     def visitBinaryOp(self, node):
-        op = node.op
-        b = self.builder
+        op=node.op
+        b=self.builder
+        ltype=node.lhs.ty
 
         # logical operators don't exist in LLVM
         if op == '&&':
-            no = self.makebool(False)
+            no=self.makebool(False)
             return self.lazy_conditional(node, node.lhs, node.rhs, no)
 
         if op == '||':
-            yes = self.makebool(True)
+            yes=self.makebool(True)
             return self.lazy_conditional(node, node.lhs, yes, node.rhs)
 
         self.visit_children(node)
 
-        if op.is_equality() or op.is_relational():
-            return b.icmp_signed(op.op, node.lhs, node.rhs)
+        # both operands of binary operators must have the same type since FenneC does not support type-casting
+        if str(ltype) == 'float':
+            if op.is_equality() or op.is_relational():
+                if op == '!=':
+                    # unordered comparison returns True for NaN
+                    return b.fcmp_unordered(op.op, node.lhs, node.rhs)
+                else:
+                    return b.fcmp_ordered(op.op, node.lhs, node.rhs)
 
-        callbacks = {
-            '+': b.add, '-': b.sub, '*': b.mul, '/': b.sdiv, '%': b.srem
-        }
+            callbacks={
+                '+': b.fadd, '-': b.fsub, '*': b.fmul, '/': b.fdiv, '%': b.frem
+            }
+
+        else:
+            if op.is_equality() or op.is_relational():
+                return b.icmp_signed(op.op, node.lhs, node.rhs)
+
+            callbacks={
+                '+': b.add, '-': b.sub, '*': b.mul, '/': b.sdiv, '%': b.srem
+            }
 
         return callbacks[op.op](node.lhs, node.rhs)
 
     def lazy_conditional(self, node, cond, yesval, noval):
-        b = self.builder
+        b=self.builder
 
-        byes = self.add_block('yes')
-        bno = self.add_block('no')
-        bend = self.add_block('endcond')
+        byes=self.add_block('yes')
+        bno=self.add_block('no')
+        bend=self.add_block('endcond')
 
-        cond = self.visit_before(cond, byes)
+        cond=self.visit_before(cond, byes)
         b.cbranch(cond, byes, bno)
 
         b.position_at_start(bend)
-        phi = b.phi(self.getty(node.ty))
+        phi=b.phi(self.getty(node.ty))
 
         b.position_at_start(byes)
-        yesval = self.visit_before(yesval, bno)
+        yesval=self.visit_before(yesval, bno)
         b.branch(bend)
         phi.add_incoming(yesval, b.block)
 
         b.position_at_start(bno)
-        noval = self.visit_before(noval, bend)
+        noval=self.visit_before(noval, bend)
         b.branch(bend)
         phi.add_incoming(noval, b.block)
 
@@ -298,24 +382,27 @@ class IRGen(ASTTransformer):
     def visitIntConst(self, node):
         return ir.Constant(self.getty(node.ty), node.value)
 
+    def visitFloatConst(self, node):
+        return ir.Constant(self.getty(node.ty), node.value)
+
     def visitStringConst(self, node):
         # name is unique, based on simple counter
-        name = '.str.%d' % self.nstrings
+        name='.str.%d' % self.nstrings
         self.nstrings += 1
 
         # convert to byte array for initializer
-        sbytes = bytearray(node.value + '\0', 'utf-8')
+        sbytes=bytearray(node.value + '\0', 'utf-8')
 
         # define string as globally initialized array
-        stringty = ir.ArrayType(ir.IntType(8), len(sbytes))
-        s = ir.GlobalVariable(self.module, stringty, name)
-        s.initializer = ir.Constant(stringty, sbytes)
+        stringty=ir.ArrayType(ir.IntType(8), len(sbytes))
+        s=ir.GlobalVariable(self.module, stringty, name)
+        s.initializer=ir.Constant(stringty, sbytes)
 
         # strings are immutable
-        s.global_constant = True
+        s.global_constant=True
 
         # overlapping strings may be merged
-        s.unnamed_addr = True
+        s.unnamed_addr=True
 
         # return pointer to start of string (GEP gets rid of array type)
         return self.builder.gep(s, (self.zero, self.zero), True, name)
@@ -335,6 +422,9 @@ class IRGen(ASTTransformer):
         if str(ty) == 'int':
             return ir.IntType(ast.Type.int_bits)
 
+        if str(ty) == 'float':
+            return ir.DoubleType()
+
         assert str(ty) == 'void'
         return ir.VoidType()
 
@@ -345,11 +435,11 @@ class IRGen(ASTTransformer):
         appended at the end of the function.
         '''
         if not before and self.insert_blocks:
-            before = self.insert_blocks[-1]
+            before=self.insert_blocks[-1]
 
         if before:
-            fn = self.builder.function
-            index = fn.basic_blocks.index(before)
+            fn=self.builder.function
+            index=fn.basic_blocks.index(before)
             return fn.insert_basic_block(index, name)
 
         return self.builder.append_basic_block(name)
@@ -360,7 +450,7 @@ class IRGen(ASTTransformer):
         inserted before the specified block `before_block`.
         '''
         self.insert_blocks.append(before_block)
-        val = self.visit(node)
+        val=self.visit(node)
         self.insert_blocks.pop()
         return val
 
@@ -370,6 +460,6 @@ class IRGen(ASTTransformer):
 
     @staticmethod
     def makebool(value):
-        b = ast.BoolConst(value)
-        b.ty = ast.Type('bool')
+        b=ast.BoolConst(value)
+        b.ty=ast.Type('bool')
         return b
