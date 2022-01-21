@@ -6,7 +6,6 @@
 
 #define DEBUG_TYPE "ADCEPass"
 #include "utils.h"
-#include <llvm/Analysis/CFG.h>
 
 namespace {
     class ADCEPass : public FunctionPass {
@@ -29,10 +28,11 @@ bool ADCEPass::runOnFunction(Function &f) {
     LOG_LINE("Visiting function " << f.getName());
     bool modified = false;
     DenseSet<Instruction*> liveSet;
+    df_iterator_default_set<BasicBlock*> reachableSet;
     SmallVector<Instruction*, 32> workList;
     SmallVector<Instruction*, 32> toErase;
 
-    for (BasicBlock* bb : depth_first(&f)) {
+    for (BasicBlock* bb : depth_first_ext(&f, reachableSet)) {
         for (Instruction &ii : *bb) {
             Instruction *i = &ii;
             if (isTriviallyLive(*i)) {
@@ -52,10 +52,16 @@ bool ADCEPass::runOnFunction(Function &f) {
     }
     toErase.clear();
 
+    LOG_LINE("reachable blocks:" << reachableSet.size());
+    for(BasicBlock* bb : reachableSet) {
+        LOG_LINE("reachable: " << *bb);
+    }
+
+    
     while(!workList.empty()) {
         Instruction* i = workList.pop_back_val();
         LOG_LINE("working on: " << *i);
-        if (isPotentiallyReachable(&f.getEntryBlock(), i->getParent())) {
+        if (reachableSet.count(i->getParent()) == 1) {
             LOG_LINE("Reachable");
             for (Use &u : i->operands()) {
                 Value *v = u.get();
@@ -75,7 +81,7 @@ bool ADCEPass::runOnFunction(Function &f) {
     }
 
     for (BasicBlock &bb : f) {
-        if (isPotentiallyReachable(&f.getEntryBlock(), &bb)) {
+        if (reachableSet.count(&bb) == 1) {
             for(Instruction &i : bb) {
                 if(liveSet.count(&i) == 0) {
                     i.dropAllReferences();
@@ -86,7 +92,7 @@ bool ADCEPass::runOnFunction(Function &f) {
     }
 
     for (BasicBlock &bb : f) {
-        if (isPotentiallyReachable(&f.getEntryBlock(), &bb)) {
+        if (reachableSet.count(&bb) == 1) {
             for(Instruction &i : bb) {
                 if(liveSet.count(&i) == 0) {
                     toErase.push_back(&i);
