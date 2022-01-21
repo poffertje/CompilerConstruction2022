@@ -1,7 +1,7 @@
 LLVMCONF ?= llvm-config
 CXX     := g++
 PREFIX  := $(shell $(LLVMCONF) --prefix)
-CFLAGS  := -Wall -Werror -g3 -fPIC $(subst $(PREFIX),'$(PREFIX)',$(shell $(LLVMCONF) --cxxflags)) -O0
+CFLAGS  := -Wall  -g3 -fPIC $(subst $(PREFIX),'$(PREFIX)',$(shell $(LLVMCONF) --cxxflags)) -O0
 UNAME_S := $(shell uname -s)
 LDFLAGS := -g3 -shared $(subst $(PREFIX),'$(PREFIX)',$(shell $(LLVMCONF) --ldflags))
 ifeq ($(UNAME_S), Darwin)

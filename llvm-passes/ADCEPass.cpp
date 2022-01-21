@@ -18,12 +18,6 @@ namespace {
     };
 }
 
-void printDenseSet(DenseSet<Instruction*>& set) {
-    for(Instruction* i : set) {
-        LOG_LINE(*i);
-    }
-}
-
 bool ADCEPass::runOnFunction(Function &f) {
     LOG_LINE("Visiting function " << f.getName());
     bool modified = false;
@@ -56,7 +50,6 @@ bool ADCEPass::runOnFunction(Function &f) {
     for(BasicBlock* bb : reachableSet) {
         LOG_LINE("reachable: " << *bb);
     }
-
     
     while(!workList.empty()) {
         Instruction* i = workList.pop_back_val();
