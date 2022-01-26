@@ -45,11 +45,6 @@ bool ADCEPass::runOnFunction(Function &f) {
         modified = true;
     }
     toErase.clear();
-
-    LOG_LINE("reachable blocks:" << reachableSet.size());
-    for(BasicBlock* bb : reachableSet) {
-        LOG_LINE("reachable: " << *bb);
-    }
     
     while(!workList.empty()) {
         Instruction* i = workList.pop_back_val();

@@ -15,6 +15,7 @@ namespace {
         SmallVectorImpl<BasicBlock*>* exitBlocks;
         Instruction* inst;
         DominatorTree* dt;
+        SmallVectorImpl<Instruction*>* movable;
     };
 
     class LICMPass : public LoopPass {
@@ -24,7 +25,7 @@ namespace {
         virtual bool runOnLoop(Loop *l, LPPassManager &lpm) override;
         void getAnalysisUsage(AnalysisUsage &au) const override;
     private:
-        bool myIsLoopInvariant(Instruction* i, LoopInfo *li);
+        bool myIsLoopInvariant(Instruction* i, LoopInfo *li, SmallVectorImpl<Instruction*>* movable);
         bool myIsSafeToHoist(Instruction* i, DominatorTree *dt, SmallVectorImpl<BasicBlock*> *exitBlocks);
         bool canMoveInstruction(InstMoveInfo* info);
     };
@@ -40,6 +41,7 @@ void LICMPass::getAnalysisUsage(AnalysisUsage &au) const {
 
 bool LICMPass::runOnLoop(Loop *l, LPPassManager &lpm) {
     bool modified = false;
+
     BasicBlock *header = l->getHeader();
     DominatorTree *dt = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     LoopInfo* li = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -55,7 +57,7 @@ bool LICMPass::runOnLoop(Loop *l, LPPassManager &lpm) {
             if(li->getLoopDepth(bb) == 1) {
                 LOG_LINE("It is not in a sub-loop");
                 for(Instruction &i : *bb) {
-                    InstMoveInfo info = {l, li, &exitBlocks, &i, dt};
+                    InstMoveInfo info = {l, li, &exitBlocks, &i, dt, &movable};
                     if (canMoveInstruction(&info)) {
                         movable.push_back(&i);
                     }
@@ -82,10 +84,8 @@ bool LICMPass::runOnLoop(Loop *l, LPPassManager &lpm) {
 
 bool LICMPass::canMoveInstruction(InstMoveInfo* info) {
     LOG_LINE("Instruction: " << *info->inst);
-    bool loopInvariant = myIsLoopInvariant(info->inst, info->loopInfo);
-    LOG_LINE("loop invariant: " << loopInvariant);
-    LOG_LINE("safe to hoist: " << myIsSafeToHoist(info->inst, info->dt, info->exitBlocks));
-    if(loopInvariant && myIsSafeToHoist(info->inst, info->dt, info->exitBlocks)) {
+    if(myIsLoopInvariant(info->inst, info->loopInfo, info->movable)
+       && myIsSafeToHoist(info->inst, info->dt, info->exitBlocks)) {
         LOG_LINE("Instruction can be moved to preheader");
         return true;
     }
@@ -94,12 +94,20 @@ bool LICMPass::canMoveInstruction(InstMoveInfo* info) {
 }
 
 
-bool LICMPass::myIsLoopInvariant(Instruction *i, LoopInfo* li) {
+bool LICMPass::myIsLoopInvariant(Instruction *i, LoopInfo* li, SmallVectorImpl<Instruction*>* movable) {
     for (Use &u : i->operands()) {
         Value *v = u.get();
         LOG_LINE("Checking operand: " << *v);
         if (Instruction* opI = dyn_cast<Instruction>(v)) {
-            if(li->getLoopDepth(opI->getParent()) != 0) {
+            bool movableOperand = false;
+            for(Instruction *toMove : *movable) {
+                if(toMove == opI) {
+                    LOG_LINE("Will be moved later");
+                    movableOperand = true;
+                    break;
+                }
+            }
+            if(!movableOperand && li->getLoopDepth(opI->getParent()) != 0) {
                 LOG_LINE("Not outside of loop");
                 return false;
             }
@@ -108,11 +116,7 @@ bool LICMPass::myIsLoopInvariant(Instruction *i, LoopInfo* li) {
             return false;
         }
     }
-    LOG_LINE("Binary op: " << i->isBinaryOp());
-    LOG_LINE("Shift: " << i->isShift());
-    LOG_LINE("Is select: " << isa<SelectInst>(i));
-    LOG_LINE("Is cast inst: " << isa<CastInst>(i));
-    LOG_LINE("Is GetElementPtrInst: " << isa<GetElementPtrInst>(i));
+    
     return i->isBinaryOp() || i->isShift() || isa<SelectInst>(i) || isa<CastInst>(i) || isa<GetElementPtrInst>(i);
 
 }

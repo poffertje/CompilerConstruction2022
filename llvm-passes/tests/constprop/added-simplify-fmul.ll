@@ -15,15 +15,6 @@ entry.while.body:                                 ; preds = %entry.while.cond
   ; CHECK: %.7 = add i32 %i.0, 1
   %.7 = add i32 %i.0, 1
 
-  ; checking x * 0
-
-  %x = fmul double %l, 0.0
-  %y = fmul double 0.0, %l
-  ; CHECK: store volatile double 0.000000e+00, double* %a
-  store volatile double %x, double* %a
-  ; CHECK: store volatile double 0.000000e+00, double* %a
-  store volatile double %y, double* %a
-
   ; checking x * 1
 
   %z = fmul double %l, 1.0

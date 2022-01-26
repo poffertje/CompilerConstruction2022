@@ -62,13 +62,11 @@ namespace {
         virtual bool runOnFunction(Function &f) override;
     private:
 
-        Function *curF = NULL;
-
         template<class constType>
-        bool constFold(Instruction *i, Operation oper);
+        bool constProp(Instruction *i, Operation oper);
 
-        bool constFoldInt(Instruction *i);
-        bool constFoldFloat(Instruction *i);
+        bool constPropInt(Instruction *i);
+        bool constPropFloat(Instruction *i);
 
         Constant* createConstant(Instruction *i, Operation oper);
         Value* trySimplify(Instruction *i, Operation oper);
@@ -81,17 +79,16 @@ bool ConstPropPass::runOnFunction(Function &f) {
         LOG_LINE("Entering basic block: " << bb);
         for (Instruction &i : bb) {
             LOG_LINE("Checking instruction: " << i);
-            if(constFoldInt(&i) || constFoldFloat(&i)) {
+            if(constPropInt(&i) || constPropFloat(&i)) {
                 modified = true;
             }
         }
     }
-
     return modified;
 }
 
 template<class constType>
-bool ConstPropPass::constFold(Instruction *i, Operation oper) {
+bool ConstPropPass::constProp(Instruction *i, Operation oper) {
     bool allConstants = true;
     bool someConstant = false;
     SmallVector<User *, 32> replaceable;
@@ -159,9 +156,6 @@ bool ConstPropPass::constFold(Instruction *i, Operation oper) {
 #define FLOAT_BINARY_OP_CONST_CREATE__infix(operator)                \
     _BINARY_OP_CONST_CREATE__infix(ConstantFP, APFloat, getValueAPF, operator)
 
-#define FLOAT_BINARY_OP_CONST_CREATE__fun(fun)                       \
-    _BINARY_OP_CONST_CREATE__fun(ConstantFP, APFloat, getValueAPF, fun)
-
 Constant* ConstPropPass::createConstant(Instruction *i, Operation oper) {
     switch(oper) {
         // Integer operations
@@ -216,6 +210,16 @@ Constant* ConstPropPass::createConstant(Instruction *i, Operation oper) {
         }
         case FDiv: {
             FLOAT_BINARY_OP_CONST_CREATE__infix(/)
+        }
+        case FRem: {
+            BinaryOperator *op = cast<BinaryOperator>(i);
+            ConstantFP *a = cast<ConstantFP>(op->getOperand(0));
+            ConstantFP *b = cast<ConstantFP>(op->getOperand(1));
+            APFloat result = APFloat(a->getValueAPF());
+            APFloatBase::opStatus status = result.remainder(b->getValueAPF());
+            if(status == APFloatBase::opStatus::opOK)
+                return ConstantFP::get(a->getType(), result);
+            return NULL;
         }
         default:
             return NULL;
@@ -334,36 +338,35 @@ Value* ConstPropPass::trySimplify(Instruction *i, Operation oper) {
         case FSub: {
             RULE_INIT(ConstantFP)
             FLOAT_RULE_RIGHT(.convertToDouble() ==  0.0, nonConst)
+            FLOAT_RULE_SYM(.isNaN(), constVal)
             break;
             
         }
         case FDiv: {
             RULE_INIT(ConstantFP)
             FLOAT_RULE_RIGHT(.convertToDouble() ==  1.0, nonConst)
-            Value *zeroVal = ConstantFP::get(nonConst->getContext(), APFloat(0.0));
-            FLOAT_RULE_LEFT(.convertToDouble() ==  0.0, zeroVal)
+            FLOAT_RULE_SYM(.isNaN(), constVal)
             break;
         }
         case FAdd: {
             RULE_INIT(ConstantFP)
             FLOAT_RULE_SYM(.convertToDouble() ==  0.0, nonConst)
+            FLOAT_RULE_SYM(.isNaN(), constVal)
             break;
         }
         case FMul: {
             RULE_INIT(ConstantFP)
             FLOAT_RULE_SYM(.convertToDouble() ==  1.0, nonConst)
-            Value *zeroVal = ConstantFP::get(nonConst->getContext(), APFloat(0.0));
-            FLOAT_RULE_SYM(.convertToDouble() ==  0.0, zeroVal)
+            FLOAT_RULE_SYM(.isNaN(), constVal)
             break;
         }
-
         default:
             break;
     }
     return NULL;
 }
 
-bool ConstPropPass::constFoldInt(Instruction *i) {
+bool ConstPropPass::constPropInt(Instruction *i) {
     if(BinaryOperator* op = dyn_cast<BinaryOperator>(i)) {
         Instruction::BinaryOps opcode = op->getOpcode();
         Operation oper = opcodeToOperation(opcode);
@@ -372,19 +375,19 @@ bool ConstPropPass::constFoldInt(Instruction *i) {
             || oper == Shl || oper == AShr || oper == UDiv
             || oper == SDiv || oper == SRem || oper == URem
             || oper == LShr) {
-            return constFold<ConstantInt>(i, oper);
+            return constProp<ConstantInt>(i, oper);
         }
     }
     return false;
 }
 
-bool ConstPropPass::constFoldFloat(Instruction *i) {
+bool ConstPropPass::constPropFloat(Instruction *i) {
     if(BinaryOperator* op = dyn_cast<BinaryOperator>(i)) {
         Instruction::BinaryOps opcode = op->getOpcode();
         Operation oper = opcodeToOperation(opcode);
         // Check for supported operations
-        if(oper == FSub || oper == FAdd || oper == FDiv || oper == FMul) {
-            return constFold<ConstantFP>(i, oper);
+        if(oper == FSub || oper == FAdd || oper == FDiv || oper == FMul || oper == FRem) {
+            return constProp<ConstantFP>(i, oper);
         }
     }
     return false;
@@ -395,4 +398,4 @@ bool ConstPropPass::constFoldFloat(Instruction *i) {
 // -coco-ConstPropPass, the second argument is a description shown in the help text
 // about this pass.
 char ConstPropPass::ID = 0;
-static RegisterPass<ConstPropPass> X("coco-constprop", "Example LLVM pass printing each function it visits, and every call instruction it finds");
+static RegisterPass<ConstPropPass> X("coco-constprop", "Constant Propagation Pass");
