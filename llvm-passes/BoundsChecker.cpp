@@ -17,12 +17,18 @@ namespace {
         virtual bool runOnModule(Module &M) override;
 
     private:
-        DataLayout *dl;
+        Function *BoundscheckFunc;
 
         Value *getPointerOffset(GetElementPtrInst *GEP, IRBuilder<> *B, SmallDenseMap<GetElementPtrInst*, Value*, 32> *computedOffsets);
-        Value *getPtrOrigin(GetElementPtrInst *GEP);
-        Value *getPtrSize(Value *origin);
+        Value *getPtrOrigin(Value *ptr);
+        Value *getOriginSize(Value *origin);
+        bool isBoundscheckRequired(GetElementPtrInst *GEP);
+        bool tryCloneFunctions(Module &M);
+        Function* cloneFunction(Function &F, SmallVectorImpl<Argument*> &pointerArgs);
+        void replaceCallInsts(Function &F, Function *cloneFunc, SmallVectorImpl<Function*> &originalFunctions);
         bool instrumentGEPs(Function &F);
+        bool shouldClone(Function &F, SmallVectorImpl<Argument*> &pointerArgs);
+        Argument* findArgumentByName(Function &F, std::string name);
     };
 
     ConstantInt *sumConstantInts(ConstantInt *a, ConstantInt *b) {
@@ -41,14 +47,19 @@ bool BoundsChecker::instrumentGEPs(Function &F) {
     bool modified = false;
 
     for (Instruction &II : instructions(F)) {
-        if(GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(&II)) {
+        GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(&II);
+        if(GEP && isBoundscheckRequired(GEP)) {
             LOG_LINE("Got a GEP:  " << *GEP);
             Value* offset = getPointerOffset(GEP, &B, &computedOffsets);
             LOG_LINE("Got offset: " << *offset);
             Value* origin = getPtrOrigin(GEP);
             LOG_LINE("Got origin: " << *origin);
-            Value* originSize = getPtrSize(origin);
+            Value* originSize = getOriginSize(origin);
             LOG_LINE("Origin size: " << *originSize);
+
+            // Insert bounds check
+            B.SetInsertPoint(GEP);
+            B.CreateCall(BoundscheckFunc, {offset, originSize});
             modified = true;
         }
     }
@@ -56,16 +67,21 @@ bool BoundsChecker::instrumentGEPs(Function &F) {
 }
 
 bool BoundsChecker::runOnModule(Module &M) {
-    // Retrieve a pointer to the helper function. The instrumentAllocations
-    // function will insert calls to this function for every allocation. This
-    // function is written in our runtime (runtime/dummy.c). To see its (LLVM)
-    // type, you can check runtime/obj/dummy.ll)
-
-    dl = new DataLayout(&M);
+    // Retrieve a pointer to the helper function.
+    LLVMContext &C = M.getContext();
+    Type *VoidTy = Type::getVoidTy(C);
+    Type *Int32Ty = Type::getInt32Ty(C);
+    auto FnCallee = M.getOrInsertFunction("__coco_check_bounds",
+                                          VoidTy, Int32Ty, Int32Ty);
+    BoundscheckFunc = cast<Function>(FnCallee.getCallee());
 
     // LLVM wants to know whether we made any modifications to the IR, so we
     // keep track of this.
     bool Changed = false;
+
+    tryCloneFunctions(M);
+
+    LOG_LINE("Module: " << M);
 
     for (Function &F : M) {
         // We want to skip instrumenting certain functions, like declarations
@@ -77,7 +93,6 @@ bool BoundsChecker::runOnModule(Module &M) {
         instrumentGEPs(F);
     }
 
-    delete dl;
     return Changed;
 }
 
@@ -111,16 +126,15 @@ Value* BoundsChecker::getPointerOffset(GetElementPtrInst *GEP, IRBuilder<> *B, S
     }
 }
 
-Value* BoundsChecker::getPtrOrigin(GetElementPtrInst *GEP) {
-    Value* ptr = GEP->getOperand(0);
-    if(GetElementPtrInst *GEP2 = dyn_cast<GetElementPtrInst>(ptr)) {
-        return getPtrOrigin(GEP2);
+Value* BoundsChecker::getPtrOrigin(Value* ptr) {
+    if(GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(ptr)) {
+        return getPtrOrigin(GEP->getOperand(0));
     } else {
         return ptr;
     }
 }
 
-Value* BoundsChecker::getPtrSize(Value* origin) {
+Value* BoundsChecker::getOriginSize(Value* origin) {
     if(AllocaInst *a_inst = dyn_cast<AllocaInst>(origin)) {
         return a_inst->getArraySize();
     } else if(Constant *c_origin = dyn_cast<Constant>(origin)) {
@@ -142,8 +156,131 @@ Value* BoundsChecker::getPtrSize(Value* origin) {
             LOG_LINE("This function is called main");
             return f->getArg(0);
         }
+
+        Argument* arg_size = findArgumentByName(*f, arg_origin->getName().str() + "_coco_size");
+        if(!arg_size) {
+            ERROR("Cannot find argument size for " << *arg_origin);
+        }
+        return arg_size;
     }
     ERROR("Unknown origin type");
+}
+
+Argument* BoundsChecker::findArgumentByName(Function &F, std::string name) {
+    for(Argument &arg : F.args()) {
+        if(arg.getName().equals(name)) {
+            return &arg;
+        }
+    }
+    return NULL;
+}
+
+bool BoundsChecker::isBoundscheckRequired(GetElementPtrInst *GEP) {
+    return GEP->getNumIndices() == 1;
+}
+
+bool BoundsChecker::tryCloneFunctions(Module &M) {
+    LOG_LINE("Performing cloning");
+    SmallVector<Function*, 16> cloneFunctions;
+    SmallVector<Function*, 16> originalFunctions;
+
+    for(Function &F : M) {
+        if(shouldInstrument(&F)) {
+            LOG_LINE("Checking function " << F);
+            SmallVector<Argument*, 8> pointerArgs;
+            if(shouldClone(F, pointerArgs)) {
+                LOG_LINE("Should clone");
+                Function* cloneFunc = cloneFunction(F, pointerArgs);
+                cloneFunctions.push_back(cloneFunc);
+                originalFunctions.push_back(&F);
+            }
+        }
+    }
+
+    for(size_t i = 0; i < cloneFunctions.size(); i++) {
+        Function* cloneFunc = cloneFunctions[i];
+        Function* origFunc = originalFunctions[i];
+
+        replaceCallInsts(*origFunc, cloneFunc, originalFunctions);
+    }
+
+    LOG_LINE("Deleting functions");
+
+    for(Function* F : originalFunctions) {
+        F->dropAllReferences();
+        F->eraseFromParent();
+    }
+    
+    return false;
+}
+
+Function* BoundsChecker::cloneFunction(Function &F, SmallVectorImpl<Argument*> &pointerArgs) {
+    // Clone function with new arguments (sizes of the various arrays)
+    Type* Int32Ty = Type::getInt32Ty(F.getContext());
+    Type* newParamTypes[pointerArgs.size()];
+    std::fill_n(newParamTypes, pointerArgs.size(), Int32Ty);
+    SmallVector<Argument*, 8> newArgs;
+    Function* cloneFunc = addParamsToFunction(&F, ArrayRef<Type*>(newParamTypes, pointerArgs.size()), newArgs);
+
+    // Change new arguments names
+    for(size_t i = 0; i < newArgs.size(); ++i) {
+        newArgs[i]->setName(pointerArgs[i]->getName() + "_coco_size");
+    }
+
+    LOG_LINE("Clone func " << *cloneFunc);
+
+    //replaceCallInsts(F, cloneFunc);
+    return cloneFunc;
+}
+
+void BoundsChecker::replaceCallInsts(Function &F, Function *cloneFunc, SmallVectorImpl<Function*> &originalFunctions) {
+    for(User* u : F.users()) {
+        LOG_LINE("User: " << *u);
+        if(CallInst* oldCall = dyn_cast<CallInst>(u)) {
+            // If this call instruction is inside an original function (one which will be removed)
+            // then we don't want to do anything
+            for(Function* origFunc : originalFunctions) {
+                if(oldCall->getCaller() == origFunc) {
+                    return;
+                }
+            }
+
+            SmallVector<Value*, 8> newArgs;
+            SmallVector<Value*, 8> ptrArgsSizes;
+            // Find all arguments and sizes of pointer arguments
+            for(Value* arg_operand : oldCall->arg_operands()) {
+                LOG_LINE("arg operand: " << *arg_operand);
+                newArgs.push_back(arg_operand);
+                if(arg_operand->getType()->isPointerTy()) {
+                    Value* origin = getPtrOrigin(arg_operand);
+                    Value* origin_size = getOriginSize(origin);
+                    LOG_LINE("origin: " << *origin);
+                    LOG_LINE("origin size: " << *origin_size);
+                    ptrArgsSizes.push_back(origin_size);
+                }
+            }
+            // Push sizes of pointer arguments as new arguments at the end
+            for(Value* argSize : ptrArgsSizes) {
+                newArgs.push_back(argSize);
+            }
+
+            ReplaceInstWithInst(oldCall, CallInst::Create(cloneFunc, newArgs));
+        }
+    }
+}
+
+bool BoundsChecker::shouldClone(Function &F, SmallVectorImpl<Argument*> &pointerArgs) {
+    if(F.getName().equals("main")) {
+        return false;
+    }
+
+    for(Argument &arg : F.args()) {
+        Type* ty = arg.getType();
+        if(ty->isPointerTy()) {
+            pointerArgs.push_back(&arg);
+        }
+    }
+    return pointerArgs.size() > 0;
 }
 
 // Register the pass with LLVM so we can invoke it with opt. The first argument
