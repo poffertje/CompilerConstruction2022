@@ -1,0 +1,9 @@
+#include <cstdlib.fh>
+
+int main(int argc, char[][] argv) {
+    argv[0];
+    puts("YES");
+    argv[argc];
+    puts("NO");
+    return 0;
+}
