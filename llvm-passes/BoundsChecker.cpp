@@ -19,9 +19,12 @@ namespace {
     private:
         Function *BoundscheckFunc;
 
-        Value *getPointerOffset(GetElementPtrInst *GEP, IRBuilder<> *B, SmallDenseMap<GetElementPtrInst*, Value*, 32> *computedOffsets);
+        SmallDenseMap<Value*, Value*, 32> computedSizes;
+        SmallDenseMap<GetElementPtrInst*, Value*, 32> computedOffsets;
+
+        Value *getPointerOffset(GetElementPtrInst *GEP, IRBuilder<> *B);
         Value *getPtrOrigin(Value *ptr);
-        Value *getOriginSize(Value *origin);
+        Value *getOriginSize(Value *origin, IRBuilder<> *B);
         bool isBoundscheckRequired(GetElementPtrInst *GEP);
         bool tryCloneFunctions(Module &M);
         Function* cloneFunction(Function &F, SmallVectorImpl<Argument*> &pointerArgs);
@@ -42,7 +45,6 @@ bool BoundsChecker::instrumentGEPs(Function &F) {
     // Construct an IRBuilder (at a random insertion point) so we can reuse it
     // every time we need it.
     IRBuilder<> B(&F.getEntryBlock());
-    SmallDenseMap<GetElementPtrInst*, Value*, 32> computedOffsets;
 
     bool modified = false;
 
@@ -50,11 +52,11 @@ bool BoundsChecker::instrumentGEPs(Function &F) {
         GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(&II);
         if(GEP && isBoundscheckRequired(GEP)) {
             LOG_LINE("Got a GEP:  " << *GEP);
-            Value* offset = getPointerOffset(GEP, &B, &computedOffsets);
+            Value* offset = getPointerOffset(GEP, &B);
             LOG_LINE("Got offset: " << *offset);
             Value* origin = getPtrOrigin(GEP);
             LOG_LINE("Got origin: " << *origin);
-            Value* originSize = getOriginSize(origin);
+            Value* originSize = getOriginSize(origin, &B);
             LOG_LINE("Origin size: " << *originSize);
 
             // Insert bounds check
@@ -96,32 +98,32 @@ bool BoundsChecker::runOnModule(Module &M) {
     return Changed;
 }
 
-Value* BoundsChecker::getPointerOffset(GetElementPtrInst *GEP, IRBuilder<> *B, SmallDenseMap<GetElementPtrInst*, Value*, 32> *computedOffsets) {
-    if(computedOffsets->count(GEP) == 1) {
-        return computedOffsets->lookup(GEP);
+Value* BoundsChecker::getPointerOffset(GetElementPtrInst *GEP, IRBuilder<> *B) {
+    if(computedOffsets.count(GEP) == 1) {
+        return computedOffsets.lookup(GEP);
     }
     
     Value* ptr = GEP->getOperand(0);
     Value* off = GEP->getOperand(1);
 
     if (GetElementPtrInst *GEP2 = dyn_cast<GetElementPtrInst>(ptr)) {
-        Value* off2 = getPointerOffset(GEP2, B, computedOffsets);
+        Value* off2 = getPointerOffset(GEP2, B);
         ConstantInt *c_off = dyn_cast<ConstantInt>(off);
         ConstantInt *c_off2 = dyn_cast<ConstantInt>(off2);
 
         if(c_off && c_off2) {
             ConstantInt *calculated = sumConstantInts(c_off, c_off2);
-            computedOffsets->insert({GEP, calculated});
+            computedOffsets.insert({GEP, calculated});
             return calculated;
         } else {
             LOG_LINE("Creating ADD instruction");
             B->SetInsertPoint(GEP);
             Value *inserted = B->CreateAdd(off, off2);
-            computedOffsets->insert({GEP, inserted});
+            computedOffsets.insert({GEP, inserted});
             return inserted;
         }
     } else {
-        computedOffsets->insert({GEP, off});
+        computedOffsets.insert({GEP, off});
         return off;
     }
 }
@@ -134,15 +136,22 @@ Value* BoundsChecker::getPtrOrigin(Value* ptr) {
     }
 }
 
-Value* BoundsChecker::getOriginSize(Value* origin) {
+Value* BoundsChecker::getOriginSize(Value* origin, IRBuilder<> *B) {
+    if(computedSizes.count(origin) == 1) {
+        return computedSizes.lookup(origin);
+    }
+    
     if(AllocaInst *a_inst = dyn_cast<AllocaInst>(origin)) {
-        return a_inst->getArraySize();
+        Value* size = a_inst->getArraySize();
+        computedSizes.insert({origin, size});
+        return size;
     } else if(Constant *c_origin = dyn_cast<Constant>(origin)) {
         if(PointerType *pt = dyn_cast<PointerType>(c_origin->getType())) {
             Type* ptrElemTy = pt->getPointerElementType();
             if(SequentialType* seq = dyn_cast<SequentialType>(ptrElemTy)) {
-                Value* ret = ConstantInt::get(IntegerType::getInt32Ty(origin->getContext()), seq->getNumElements());
-                return ret;
+                Value* size = ConstantInt::get(IntegerType::getInt32Ty(origin->getContext()), seq->getNumElements());
+                computedSizes.insert({origin, size});
+                return size;
             } else {
                 ERROR("Something has PointerType but it does not refer to a SequentialType");
             }
@@ -154,6 +163,7 @@ Value* BoundsChecker::getOriginSize(Value* origin) {
         LOG_LINE("Name: " << f->getName());
         if (f->getName().equals("main")) {
             LOG_LINE("This function is called main");
+            computedSizes.insert({origin, f->getArg(0)});
             return f->getArg(0);
         }
 
@@ -161,7 +171,28 @@ Value* BoundsChecker::getOriginSize(Value* origin) {
         if(!arg_size) {
             ERROR("Cannot find argument size for " << *arg_origin);
         }
+        computedSizes.insert({origin, arg_size});
         return arg_size;
+    } else if(PHINode *phi = dyn_cast<PHINode>(origin)) {
+        LOG_LINE("Phi Node: " << *phi);
+        B->SetInsertPoint(phi);
+        PHINode *size_phi = B->CreatePHI(Type::getInt32Ty(phi->getContext()), phi->getNumIncomingValues());
+        computedSizes.insert({origin, size_phi});
+
+        for(size_t i = 0; i < phi->getNumIncomingValues(); i++) {
+            Value* ptr = phi->getIncomingValue(i);
+            Value* origin = getPtrOrigin(ptr);
+            Value* size = getOriginSize(origin, B);
+            size_phi->addIncoming(size, phi->getIncomingBlock(i));
+        }
+
+        LOG_LINE("size phi: " << *size_phi);
+        return size_phi;
+    } else if(LoadInst *load_origin = dyn_cast<LoadInst>(origin)) {
+        Value* ptr = load_origin->getOperand(0);
+        Value* origin = getPtrOrigin(ptr);
+        Value* size = getOriginSize(origin, B);
+        return size;
     }
     ERROR("Unknown origin type");
 }
@@ -252,8 +283,9 @@ void BoundsChecker::replaceCallInsts(Function &F, Function *cloneFunc, SmallVect
                 LOG_LINE("arg operand: " << *arg_operand);
                 newArgs.push_back(arg_operand);
                 if(arg_operand->getType()->isPointerTy()) {
+                    IRBuilder<> B(&F.getEntryBlock());
                     Value* origin = getPtrOrigin(arg_operand);
-                    Value* origin_size = getOriginSize(origin);
+                    Value* origin_size = getOriginSize(origin, &B);
                     LOG_LINE("origin: " << *origin);
                     LOG_LINE("origin size: " << *origin_size);
                     ptrArgsSizes.push_back(origin_size);
