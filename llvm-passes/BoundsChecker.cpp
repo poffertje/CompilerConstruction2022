@@ -189,10 +189,7 @@ Value* BoundsChecker::getOriginSize(Value* origin, IRBuilder<> *B) {
         LOG_LINE("size phi: " << *size_phi);
         return size_phi;
     } else if(LoadInst *load_origin = dyn_cast<LoadInst>(origin)) {
-        Value* ptr = load_origin->getOperand(0);
-        Value* origin = getPtrOrigin(ptr);
-        Value* size = getOriginSize(origin, B);
-        return size;
+        return ConstantInt::get(Type::getInt32Ty(load_origin->getContext()), APInt::getSignedMaxValue(32));
     }
     ERROR("Unknown origin type");
 }
@@ -239,9 +236,12 @@ bool BoundsChecker::tryCloneFunctions(Module &M) {
 
     for(Function* F : originalFunctions) {
         F->dropAllReferences();
+    }
+
+    for(Function* F : originalFunctions) {
         F->eraseFromParent();
     }
-    
+
     return false;
 }
 

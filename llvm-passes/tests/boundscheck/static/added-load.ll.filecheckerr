@@ -1,6 +1,0 @@
-added-load.ll:6:10: error: CHECK: expected string not found in input
-; CHECK: %a = alloca i32*
-         ^
-<stdin>:6:2: note: scanning from here
- %b = alloca i32*
- ^

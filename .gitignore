@@ -12,6 +12,7 @@ _deps
 lib/
 
 .idea/
+.vscode/
 
 *.log
 *.o
