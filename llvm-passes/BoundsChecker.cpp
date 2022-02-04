@@ -83,9 +83,9 @@ bool BoundsChecker::runOnModule(Module &M) {
 
     // LLVM wants to know whether we made any modifications to the IR, so we
     // keep track of this.
-    bool Changed = false;
+    bool modified = false;
 
-    tryCloneFunctions(M);
+    modified = tryCloneFunctions(M);
 
     LOG_LINE("Module: " << M);
 
@@ -96,10 +96,10 @@ bool BoundsChecker::runOnModule(Module &M) {
             continue;
 
         LOG_LINE("Visiting function " << F.getName());
-        instrumentGEPs(F);
+        modified = instrumentGEPs(F);
     }
 
-    return Changed;
+    return modified;
 }
 
 Value* BoundsChecker::getPointerOffset(GetElementPtrInst *GEP, IRBuilder<> *B) {
@@ -215,6 +215,7 @@ bool BoundsChecker::tryCloneFunctions(Module &M) {
     LOG_LINE("Performing cloning");
     SmallVector<Function*, 16> cloneFunctions;
     SmallVector<Function*, 16> originalFunctions;
+    bool modified = false;
 
     for(Function &F : M) {
         if(shouldInstrument(&F)) {
@@ -244,9 +245,10 @@ bool BoundsChecker::tryCloneFunctions(Module &M) {
 
     for(Function* F : originalFunctions) {
         F->eraseFromParent();
+        modified = true;
     }
 
-    return false;
+    return modified;
 }
 
 Function* BoundsChecker::cloneFunction(Function &F, SmallVectorImpl<Argument*> &pointerArgs) {
@@ -256,7 +258,7 @@ Function* BoundsChecker::cloneFunction(Function &F, SmallVectorImpl<Argument*> &
     std::fill_n(newParamTypes, pointerArgs.size(), Int32Ty);
     SmallVector<Argument*, 8> newArgs;
     Function* cloneFunc = addParamsToFunction(&F, ArrayRef<Type*>(newParamTypes, pointerArgs.size()), newArgs);
-
+    
     // Change new arguments names
     for(size_t i = 0; i < newArgs.size(); ++i) {
         newArgs[i]->setName(pointerArgs[i]->getName() + "_coco_size");
