@@ -54,6 +54,10 @@ bool BoundsChecker::instrumentGEPs(Function &F) {
             LOG_LINE("Got a GEP:  " << *GEP);
             Value* offset = getPointerOffset(GEP, &B);
             LOG_LINE("Got offset: " << *offset);
+            if(offset->getType() != Type::getInt32Ty(F.getContext())) {
+                LOG_LINE("Offset is not i32, skipping...");
+                continue;
+            }
             Value* origin = getPtrOrigin(GEP);
             LOG_LINE("Got origin: " << *origin);
             Value* originSize = getOriginSize(origin, &B);
