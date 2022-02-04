@@ -85,7 +85,7 @@ bool BoundsChecker::runOnModule(Module &M) {
     // keep track of this.
     bool modified = false;
 
-    modified = tryCloneFunctions(M);
+    modified |= tryCloneFunctions(M);
 
     LOG_LINE("Module: " << M);
 
@@ -96,7 +96,7 @@ bool BoundsChecker::runOnModule(Module &M) {
             continue;
 
         LOG_LINE("Visiting function " << F.getName());
-        modified = instrumentGEPs(F);
+        modified |= instrumentGEPs(F);
     }
 
     return modified;
