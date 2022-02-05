@@ -18,13 +18,31 @@ _deps
 
 obj
 
+# This pile of ignores is necessary, do not change!
 lib/*
 !lib/src/
 lib/src/*
 !lib/src/llvm-10.0.1/
 lib/src/llvm-10.0.1/*
+
+# Ignores for: /lib/CodeGen
 !lib/src/llvm-10.0.1/lib/
 lib/src/llvm-10.0.1/lib/*
 !lib/src/llvm-10.0.1/lib/CodeGen/
 lib/src/llvm-10.0.1/lib/CodeGen/*
 !lib/src/llvm-10.0.1/lib/CodeGen/RegAllocCoco.cpp
+!lib/src/llvm-10.0.1/lib/CodeGen/RegAllocBasic.cpp
+!lib/src/llvm-10.0.1/lib/CodeGen/CMakeLists.txt
+
+
+# Ignores for: /include/llvm
+!lib/src/llvm-10.0.1/include/
+lib/src/llvm-10.0.1/include/*
+!lib/src/llvm-10.0.1/include/llvm/
+lib/src/llvm-10.0.1/include/llvm/*
+!lib/src/llvm-10.0.1/include/llvm/InitializePasses.h
+
+# Ignores for: /include/llvm/CodeGen
+!lib/src/llvm-10.0.1/include/llvm/CodeGen/
+lib/src/llvm-10.0.1/include/llvm/CodeGen/*
+!lib/src/llvm-10.0.1/include/llvm/CodeGen/Passes.h
