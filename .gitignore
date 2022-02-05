@@ -9,7 +9,6 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
-lib/
 
 .idea/
 .vscode/
@@ -18,3 +17,14 @@ lib/
 *.o
 
 obj
+
+lib/*
+!lib/src/
+lib/src/*
+!lib/src/llvm-10.0.1/
+lib/src/llvm-10.0.1/*
+!lib/src/llvm-10.0.1/lib/
+lib/src/llvm-10.0.1/lib/*
+!lib/src/llvm-10.0.1/lib/CodeGen/
+lib/src/llvm-10.0.1/lib/CodeGen/*
+!lib/src/llvm-10.0.1/lib/CodeGen/RegAllocCoco.cpp
