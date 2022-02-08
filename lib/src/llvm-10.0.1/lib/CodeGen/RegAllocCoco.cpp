@@ -33,15 +33,17 @@
 #include "llvm/PassAnalysisSupport.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/RandomNumberGenerator.h"
 #include <cstdlib>
 #include <queue>
+#include <algorithm>
 
 using namespace llvm;
 
 #define DEBUG_TYPE "regalloc"
 
-//static RegisterRegAlloc cocoRegAlloc("coco", "coco register allocator",
-//                                      createCocoRegisterAllocator);
+static RegisterRegAlloc cocoRegAlloc("coco", "coco register allocator",
+                                      createCocoRegisterAllocator);
 
 namespace {
   struct CompSpillWeight {
@@ -260,7 +262,15 @@ unsigned RACoco::selectOrSplit(LiveInterval &VirtReg,
 
   // Check for an available register in this class.
   AllocationOrder Order(VirtReg.reg, *VRM, RegClassInfo, Matrix);
-  while (unsigned PhysReg = Order.next()) {
+
+  SmallVector<unsigned, 16> randomizedRegs;
+  while(unsigned PhysReg = Order.next()) {
+    randomizedRegs.push_back(PhysReg);
+  }
+
+  std::shuffle(randomizedRegs.begin(), randomizedRegs.end(), *MF->getFunction().getParent()->createRNG(this));
+
+  for (unsigned PhysReg : randomizedRegs) {
     // Check for interference in PhysReg
     switch (Matrix->checkInterference(VirtReg, PhysReg)) {
     case LiveRegMatrix::IK_Free:
