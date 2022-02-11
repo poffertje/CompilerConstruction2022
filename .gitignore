@@ -33,7 +33,9 @@ lib/src/llvm-10.0.1/lib/CodeGen/*
 
 !lib/src/llvm-10.0.1/lib/CodeGen/RegAllocCoco.cpp
 !lib/src/llvm-10.0.1/lib/CodeGen/CMakeLists.txt
-
+!lib/src/llvm-10.0.1/lib/CodeGen/CodeGen.cpp
+!lib/src/llvm-10.0.1/lib/CodeGen/MachineFunctionCodePointerHidingPass.cpp
+!lib/src/llvm-10.0.1/lib/CodeGen/TargetPassConfig.cpp
 
 # Ignores for: /include/llvm
 !lib/src/llvm-10.0.1/include/

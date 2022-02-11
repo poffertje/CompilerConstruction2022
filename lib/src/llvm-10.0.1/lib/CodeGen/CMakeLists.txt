@@ -77,6 +77,7 @@ add_llvm_component_library(LLVMCodeGen
   MachineFunction.cpp
   MachineFunctionPass.cpp
   MachineFunctionPrinterPass.cpp
+  MachineFunctionCodePointerHidingPass.cpp
   MachineInstrBundle.cpp
   MachineInstr.cpp
   MachineLICM.cpp
